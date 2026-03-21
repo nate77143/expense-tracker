@@ -189,7 +189,29 @@
           <h3 class="card-title">Recent activity</h3>
           <p class="panel-copy">Review who updated this tracker and what changed most recently.</p>
         </div>
-        <span class="tag">{{ activityLogs.length }} event{{ activityLogs.length === 1 ? '' : 's' }}</span>
+        <div class="tracker-activity-header">
+          <div class="tracker-activity-filters">
+            <div class="form-group">
+              <label class="form-label" for="activity-date-from">From</label>
+              <input id="activity-date-from" v-model="activityDateFrom" type="date" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="activity-date-to">To</label>
+              <input id="activity-date-to" v-model="activityDateTo" type="date" class="form-input" />
+            </div>
+            <button
+              v-if="activityDateFrom || activityDateTo"
+              type="button"
+              class="btn btn-secondary"
+              @click="clearActivityFilters"
+            >
+              Clear
+            </button>
+          </div>
+          <span class="tag">
+            {{ filteredActivityLogs.length }} of {{ activityLogs.length }} event{{ activityLogs.length === 1 ? '' : 's' }}
+          </span>
+        </div>
       </div>
 
       <div v-if="activityLogs.length === 0" class="empty-state">
@@ -197,8 +219,13 @@
         <p class="empty-state-copy">Audit entries will appear here after someone changes this tracker or its records.</p>
       </div>
 
-      <div v-else class="stack">
-        <article v-for="entry in activityLogs" :key="entry.id" class="user-row">
+      <div v-else-if="filteredActivityLogs.length === 0" class="empty-state">
+        <div class="empty-state-title">No activity in this date range</div>
+        <p class="empty-state-copy">Try widening the date filter to see more tracker activity.</p>
+      </div>
+
+      <div v-else class="stack list-scroll-shell tracker-activity-list">
+        <article v-for="entry in filteredActivityLogs" :key="entry.id" class="user-row">
           <div class="user-row-main">
             <div class="user-row-title">{{ activityTitle(entry) }}</div>
             <div class="user-row-copy">{{ activityCopy(entry) }}</div>
@@ -252,6 +279,8 @@ const memberForm = reactive<{
 
 const statusMessage = ref('')
 const statusTone = ref<'default' | 'warning'>('default')
+const activityDateFrom = ref('')
+const activityDateTo = ref('')
 
 const activeTracker = computed(() => props.trackers.find(tracker => tracker.id === props.activeTrackerId) ?? null)
 const activeMembers = computed(() => props.members.filter(member => member.trackerId === props.activeTrackerId))
@@ -261,6 +290,21 @@ const currentMembership = computed(() => {
 })
 
 const activityLogs = computed(() => props.activityLogs.filter(entry => entry.trackerId === props.activeTrackerId))
+const filteredActivityLogs = computed(() => {
+  return activityLogs.value.filter(entry => {
+    const activityDate = entry.occurredAt.slice(0, 10)
+
+    if (activityDateFrom.value && activityDate < activityDateFrom.value) {
+      return false
+    }
+
+    if (activityDateTo.value && activityDate > activityDateTo.value) {
+      return false
+    }
+
+    return true
+  })
+})
 
 const canManageMembers = computed(() => {
   return currentMembership.value?.role === 'owner' || currentMembership.value?.role === 'admin'
@@ -349,6 +393,11 @@ const canDeleteTracker = (trackerId: string) => {
 const handleSwitchTracker = (event: Event) => {
   const nextTrackerId = (event.target as HTMLSelectElement).value
   emit('select-tracker', nextTrackerId)
+}
+
+const clearActivityFilters = () => {
+  activityDateFrom.value = ''
+  activityDateTo.value = ''
 }
 
 const entityLabel = (entityType: BudgetAuditLog['entityType']) => {

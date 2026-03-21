@@ -65,6 +65,7 @@
           <ExpensesPage
             v-else-if="visiblePage === 'expenses'"
             :expenses="expenses"
+            :incomes="incomes"
             :savings="savings"
             :active-tracker-id="activeTrackerId"
             @add-expense="addExpense"
@@ -523,6 +524,21 @@ const removeLocalSaving = (id: string) => {
   savings.value = savings.value.filter(saving => saving.id !== id)
 }
 
+const getAvailableIncomeBalance = () => {
+  const totalIncome = incomes.value.reduce((sum, income) => sum + income.amount, 0)
+  const incomeFundedMoves = expenses.value
+    .filter(expense => expense.fundingSource !== 'savings')
+    .reduce((sum, expense) => sum + expense.amount, 0)
+
+  return totalIncome - incomeFundedMoves
+}
+
+const getSavingsBankBalance = (bank: string) => {
+  return savings.value
+    .filter(saving => saving.bank.trim() === bank.trim())
+    .reduce((sum, saving) => sum + saving.amount, 0)
+}
+
 const removeLocalTracker = (trackerId: string) => {
   trackers.value = trackers.value.filter(tracker => tracker.id !== trackerId)
   trackerMembers.value = trackerMembers.value.filter(member => member.trackerId !== trackerId)
@@ -611,6 +627,20 @@ const handleDeleteTracker = async (trackerId: string) => {
 
 const addExpense = async (expense: Expense) => {
   try {
+    if (expense.fundingSource !== 'savings' && expense.amount > getAvailableIncomeBalance()) {
+      throw new Error('The selected income balance is not enough for this money movement.')
+    }
+
+    if (expense.fundingSource === 'savings') {
+      if (!expense.fundingSourceBank) {
+        throw new Error('Please select which savings bank funded this movement.')
+      }
+
+      if (expense.amount > getSavingsBankBalance(expense.fundingSourceBank)) {
+        throw new Error(`The selected savings bank does not have enough balance for this money movement.`)
+      }
+    }
+
     const { data, error } = await insertExpense({
       trackerId: expense.trackerId,
       date: expense.date,

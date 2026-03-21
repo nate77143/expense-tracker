@@ -68,8 +68,8 @@
         <span class="field-help">
           {{
             form.category === 'Savings'
-              ? 'Savings transfers are treated as money moving out of income and into a savings bank.'
-              : 'Choose where this expense was funded from. New expenses default to income.'
+              ? `Savings transfers are treated as money moving out of income and into a savings bank. Available income: ${formatCurrency(availableIncomeBalance)}.`
+              : `Choose where this expense was funded from. New expenses default to income. Available income: ${formatCurrency(availableIncomeBalance)}.`
           }}
         </span>
       </div>
@@ -86,7 +86,7 @@
             {{ availableSavingsBanks.length === 0 ? 'No savings bank available' : 'Select a savings bank' }}
           </option>
           <option v-for="bank in availableSavingsBanks" :key="bank" :value="bank">
-            {{ bank }}
+            {{ `${bank} (${formatCurrency(getSavingsBankBalance(bank))})` }}
           </option>
         </select>
         <span class="field-help">
@@ -117,7 +117,9 @@
           {{
             availableSavingsBanks.length === 0
               ? 'Add at least one savings record first before using savings as the payment source.'
-              : 'Choose which savings bank funded this expense.'
+              : form.fundingSourceBank
+                ? `Choose which savings bank funded this expense. Available in ${form.fundingSourceBank}: ${formatCurrency(getSavingsBankBalance(form.fundingSourceBank))}.`
+                : 'Choose which savings bank funded this expense.'
           }}
         </span>
       </div>
@@ -145,10 +147,13 @@ import {
   normalizeCategoryName,
   saveExpenseCategories
 } from '../lib/expenseCategories'
+import { formatCurrency } from '../lib/formatters'
 import type { Expense } from '../types'
 
 const props = defineProps<{
   savingsBanks?: string[]
+  savingsBankBalances?: Record<string, number>
+  availableIncome?: number
 }>()
 
 const emit = defineEmits<{
@@ -186,6 +191,7 @@ onMounted(() => {
 
 const categories = computed(() => [...EXPENSE_CATEGORIES, ...customCategories.value])
 const availableSavingsBanks = computed(() => (props.savingsBanks ?? []).filter(Boolean))
+const availableIncomeBalance = computed(() => props.availableIncome ?? 0)
 
 const categoryHelpText = computed(() => {
   if (customCategories.value.length === 0) {
@@ -194,6 +200,8 @@ const categoryHelpText = computed(() => {
 
   return `${customCategories.value.length} custom categor${customCategories.value.length === 1 ? 'y' : 'ies'} saved in this browser.`
 })
+
+const getSavingsBankBalance = (bank: string) => props.savingsBankBalances?.[bank] ?? 0
 
 const handleAddCategory = () => {
   const normalizedValue = normalizeCategoryName(newCategory.value)
@@ -292,6 +300,22 @@ const submitForm = () => {
 
   if (form.value.fundingSource === 'savings' && !form.value.fundingSourceBank) {
     alert('Please select which savings bank funded this expense.')
+    return
+  }
+
+  if (form.value.fundingSource !== 'savings' && form.value.amount > availableIncomeBalance.value) {
+    alert(`This movement is larger than your available income balance of ${formatCurrency(availableIncomeBalance.value)}.`)
+    return
+  }
+
+  if (
+    form.value.fundingSource === 'savings' &&
+    form.value.fundingSourceBank &&
+    form.value.amount > getSavingsBankBalance(form.value.fundingSourceBank)
+  ) {
+    alert(
+      `This movement is larger than the available balance in ${form.value.fundingSourceBank} (${formatCurrency(getSavingsBankBalance(form.value.fundingSourceBank))}).`
+    )
     return
   }
 
