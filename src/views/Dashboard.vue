@@ -1,112 +1,160 @@
 <template>
-  <div>
-    <h1 class="page-title">Dashboard</h1>
+  <section class="page-section">
+    <div class="section-header">
+      <div>
+        <p class="eyebrow">Snapshot</p>
+        <h2 class="section-title">Cash flow at a glance</h2>
+        <p class="section-copy">
+          Stay on top of income, expenses, and savings with a clean view of where money is moving right now.
+        </p>
+      </div>
+      <div class="section-meta">
+        <span class="label-muted">Net position</span>
+        <strong :class="netBalance >= 0 ? 'amount-positive' : 'amount-negative'">
+          {{ formatCurrency(netBalance) }}
+        </strong>
+      </div>
+    </div>
 
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Total Income</div>
-        <div class="stat-value" style="color: var(--secondary)">
-          {{ formatCurrency(totalIncome) }}
+      <article class="panel metric-card brand">
+        <div>
+          <p class="metric-label">Total income</p>
+          <strong class="metric-value">{{ formatCompactCurrency(totalIncome) }}</strong>
+        </div>
+        <p class="metric-copy">All recorded earnings across salary, freelance work, and other sources.</p>
+      </article>
+
+      <article class="panel metric-card danger">
+        <div>
+          <p class="metric-label">Total expenses</p>
+          <strong class="metric-value">{{ formatCompactCurrency(totalExpenses) }}</strong>
+        </div>
+        <p class="metric-copy">Every outgoing transaction captured across your tracked categories.</p>
+      </article>
+
+      <article class="panel metric-card neutral">
+        <div>
+          <p class="metric-label">Net balance</p>
+          <strong class="metric-value">{{ formatCompactCurrency(netBalance) }}</strong>
+        </div>
+        <p class="metric-copy">{{ balanceCopy }}</p>
+      </article>
+
+      <article class="panel metric-card success">
+        <div>
+          <p class="metric-label">Total savings</p>
+          <strong class="metric-value">{{ formatCompactCurrency(totalSavings) }}</strong>
+        </div>
+        <p class="metric-copy">Funds set aside across all linked savings accounts and banks.</p>
+      </article>
+    </div>
+
+    <div class="split-hero">
+      <article class="panel panel-strong hero-card">
+        <p class="eyebrow">Momentum</p>
+        <h2 class="section-title">Spend intentionally, not reactively</h2>
+        <p>
+          Your latest records show how current spending compares with income and how much liquidity you are still
+          protecting in savings.
+        </p>
+
+        <div class="hero-list">
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">Expense coverage ratio</p>
+              <strong>{{ coverageRatio }}</strong>
+            </div>
+            <span class="tag" :class="netBalance >= 0 ? 'tag-success' : 'tag-danger'">
+              {{ netBalance >= 0 ? 'Healthy cash flow' : 'Review spending' }}
+            </span>
+          </div>
+
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">Recent activity</p>
+              <strong>{{ recentActivityLabel }}</strong>
+            </div>
+            <span class="tag">{{ recentExpenses.length + recentIncomes.length }} entries</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="card-title">Savings by bank</h3>
+            <p class="panel-copy">A quick look at how your reserves are distributed.</p>
+          </div>
+          <div class="panel-kpi">
+            <span>Total saved</span>
+            <strong class="amount-positive">{{ formatCurrency(totalSavings) }}</strong>
+          </div>
+        </div>
+
+        <div v-if="bankBreakdown.length === 0" class="empty-state">
+          <div class="empty-state-title">No savings accounts yet</div>
+          <p class="empty-state-copy">Add your first savings record to see account distribution here.</p>
+        </div>
+
+        <div v-else class="bank-list">
+          <div v-for="bank in bankBreakdown" :key="bank.name" class="bank-item">
+            <div style="display: flex; gap: 0.9rem; align-items: center;">
+              <div class="bank-mark">{{ bank.initials }}</div>
+              <div>
+                <div class="bank-name">{{ bank.name }}</div>
+                <div class="bank-copy">{{ bank.entries }} record{{ bank.entries === 1 ? '' : 's' }}</div>
+              </div>
+            </div>
+            <strong class="saving-amount amount-positive">{{ formatCurrency(bank.amount) }}</strong>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="content-grid">
+      <TransactionList title="Recent expenses" :items="recentExpenses" :show-delete="false" />
+      <TransactionList title="Recent income" :items="recentIncomes" :is-income="true" :show-delete="false" />
+    </div>
+
+    <section class="page-section">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Trends</p>
+          <h2 class="section-title">Expense movement over time</h2>
+          <p class="section-copy">Switch between daily, weekly, and monthly views to see spending momentum clearly.</p>
+        </div>
+        <div class="segmented" role="tablist" aria-label="Dashboard trend range">
+          <button
+            v-for="view in views"
+            :key="view"
+            class="segment-button"
+            :class="{ active: dashboardActiveView === view }"
+            type="button"
+            @click="dashboardActiveView = view"
+          >
+            {{ capitalize(view) }}
+          </button>
         </div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-label">Total Expenses</div>
-        <div class="stat-value" style="color: var(--danger)">
-          -{{ formatCurrency(totalExpenses) }}
-        </div>
-      </div>
+      <ExpenseTrendChart :view="dashboardActiveView" :points="dashboardTrendPoints" />
+    </section>
 
-      <div class="stat-card">
-        <div class="stat-label">Net Balance</div>
-        <div class="stat-value" :style="{ color: netBalance >= 0 ? 'var(--secondary)' : 'var(--danger)' }">
-          {{ formatCurrency(netBalance) }}
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-label">Total Savings</div>
-        <div class="stat-value" style="color: var(--success)">
-          {{ formatCurrency(totalSavings) }}
-        </div>
-      </div>
+    <div class="content-grid">
+      <ReportSection title="This month's expenses" :items="currentMonthExpenses" />
+      <CategoryChart title="Current category mix" :items="currentMonthExpenses" />
     </div>
-
-    <div class="card" style="margin-bottom: var(--spacing-lg);">
-      <h2 class="card-title">Savings by Bank</h2>
-      <div class="transaction-list" style="padding: 0; gap: var(--spacing-sm);">
-        <div v-for="(amount, bank) in savingsByBank" :key="bank" class="transaction-item" style="padding: var(--spacing-sm); margin: 0;">
-          <span>{{ bank }}</span>
-          <strong>{{ formatCurrency(amount) }}</strong>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <div>
-        <TransactionList 
-          title="Recent Expenses" 
-          :items="recentExpenses"
-          :show-delete="false"
-          @delete="$emit('delete-expense', $event)"
-        />
-      </div>
-      <div>
-        <TransactionList 
-          title="Recent Income" 
-          :items="recentIncomes"
-          :is-income="true"
-          :show-delete="false"
-          @delete="$emit('delete-income', $event)"
-        />
-      </div>
-    </div>
-
-    <div class="report-filters" style="margin-top: var(--spacing-xl);">
-      <button 
-        class="filter-btn" 
-        :class="{ active: dashboardActiveView === 'daily' }"
-        @click="dashboardActiveView = 'daily'"
-      >
-        Daily
-      </button>
-      <button 
-        class="filter-btn" 
-        :class="{ active: dashboardActiveView === 'weekly' }"
-        @click="dashboardActiveView = 'weekly'"
-      >
-        Weekly
-      </button>
-      <button 
-        class="filter-btn" 
-        :class="{ active: dashboardActiveView === 'monthly' }"
-        @click="dashboardActiveView = 'monthly'"
-      >
-        Monthly
-      </button>
-    </div>
-
-    <ExpenseTrendChart :view="dashboardActiveView" :points="dashboardTrendPoints" />
-
-    <div class="grid-2" style="margin-top: var(--spacing-xl); gap: var(--spacing-lg);">
-      <ReportSection 
-        title="This Month's Expenses"
-        :items="currentMonthExpenses"
-      />
-      <CategoryChart 
-        title="Category Breakdown"
-        :items="currentMonthExpenses"
-      />
-    </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import TransactionList from '../components/TransactionList.vue'
-import ReportSection from '../components/ReportSection.vue'
+import { computed, ref } from 'vue'
 import CategoryChart from '../components/CategoryChart.vue'
 import ExpenseTrendChart from '../components/ExpenseTrendChart.vue'
+import ReportSection from '../components/ReportSection.vue'
+import TransactionList from '../components/TransactionList.vue'
+import { formatCompactCurrency, formatCurrency } from '../lib/formatters'
 import type { Expense, Income, Saving } from '../types'
 
 const props = defineProps<{
@@ -116,179 +164,112 @@ const props = defineProps<{
 }>()
 
 const dashboardActiveView = ref<'daily' | 'weekly' | 'monthly'>('monthly')
+const views: Array<'daily' | 'weekly' | 'monthly'> = ['daily', 'weekly', 'monthly']
 
-defineEmits<{
-  'delete-expense': [id: string]
-  'delete-income': [id: string]
-}>()
+const totalExpenses = computed(() => props.expenses.reduce((sum, expense) => sum + expense.amount, 0))
+const totalIncome = computed(() => props.incomes.reduce((sum, income) => sum + income.amount, 0))
+const netBalance = computed(() => totalIncome.value - totalExpenses.value)
+const totalSavings = computed(() => props.savings.reduce((sum, saving) => sum + saving.amount, 0))
 
-const totalExpenses = computed(() => {
-  return props.expenses.reduce((sum, e) => sum + e.amount, 0)
+const balanceCopy = computed(() => {
+  if (netBalance.value >= 0) {
+    return 'Income is currently covering spend while leaving room for savings.'
+  }
+
+  return 'Expenses are outpacing income, so this is a good time to review priorities.'
 })
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'PHP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount).replace('PHP', '₱')
-}
+const coverageRatio = computed(() => {
+  if (totalIncome.value === 0) {
+    return '0%'
+  }
 
-const totalIncome = computed(() => {
-  return props.incomes.reduce((sum, i) => sum + i.amount, 0)
+  return `${Math.round((totalExpenses.value / totalIncome.value) * 100)}% of income`
 })
 
-const netBalance = computed(() => {
-  return totalIncome.value - totalExpenses.value
+const bankBreakdown = computed(() => {
+  const grouped = props.savings.reduce<Record<string, { amount: number; entries: number }>>((acc, saving) => {
+    const key = saving.bank.trim() || 'Unassigned'
+    acc[key] = acc[key] ?? { amount: 0, entries: 0 }
+    acc[key].amount += saving.amount
+    acc[key].entries += 1
+    return acc
+  }, {})
+
+  return Object.entries(grouped)
+    .map(([name, value]) => ({
+      name,
+      amount: value.amount,
+      entries: value.entries,
+      initials: name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map(part => part[0]?.toUpperCase() ?? '')
+        .join('')
+    }))
+    .sort((a, b) => b.amount - a.amount)
 })
 
-const totalSavings = computed(() => {
-  return props.savings.reduce((sum, s) => sum + s.amount, 0)
-})
+const recentExpenses = computed(() => props.expenses.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5))
+const recentIncomes = computed(() => props.incomes.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5))
 
-const savingsByBank = computed(() => {
-  const byBank: Record<string, number> = {}
-  props.savings.forEach(s => {
-    byBank[s.bank] = (byBank[s.bank] ?? 0) + s.amount
-  })
-  return byBank
-})
+const recentActivityLabel = computed(() => {
+  const dates = [...recentExpenses.value, ...recentIncomes.value].map(item => item.date).sort().reverse()
+  if (dates.length === 0) {
+    return 'No recent activity'
+  }
 
-const recentExpenses = computed(() => {
-  return props.expenses.slice().reverse().slice(0, 5)
-})
-
-const recentIncomes = computed(() => {
-  return props.incomes.slice().reverse().slice(0, 5)
+  return `Latest on ${dates[0]}`
 })
 
 const dashboardTrendPoints = computed(() => {
-  const toNumber = (value: number) => value
-
   if (dashboardActiveView.value === 'daily') {
-    const grouped: Record<string, number> = {}
-    props.expenses.forEach(e => {
-      grouped[e.date] = (grouped[e.date] ?? 0) + e.amount
-    })
+    const grouped = props.expenses.reduce<Record<string, number>>((acc, expense) => {
+      acc[expense.date] = (acc[expense.date] ?? 0) + expense.amount
+      return acc
+    }, {})
+
     return Object.entries(grouped)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-7)
-      .map(([date, total]) => ({ label: date.slice(5), value: toNumber(total) }))
+      .map(([date, total]) => ({ label: date.slice(5), value: total }))
   }
 
   if (dashboardActiveView.value === 'weekly') {
-    const grouped: Record<string, number> = {}
-    props.expenses.forEach(e => {
-      const d = new Date(e.date + 'T00:00:00')
-      const dayOfWeek = d.getDay()
-      const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
-      const weekStart = new Date(d)
-      weekStart.setDate(diff)
-      const weekKey = weekStart.toISOString().slice(0, 10)
-      grouped[weekKey] = (grouped[weekKey] ?? 0) + e.amount
-    })
+    const grouped = props.expenses.reduce<Record<string, number>>((acc, expense) => {
+      const date = new Date(`${expense.date}T00:00:00`)
+      const dayOfWeek = date.getDay()
+      const offset = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+      const weekStart = new Date(date)
+      weekStart.setDate(offset)
+      const key = weekStart.toISOString().slice(0, 10)
+      acc[key] = (acc[key] ?? 0) + expense.amount
+      return acc
+    }, {})
+
     return Object.entries(grouped)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-8)
-      .map(([weekStart, total]) => ({ label: weekStart.slice(5), value: toNumber(total) }))
+      .map(([weekStart, total]) => ({ label: weekStart.slice(5), value: total }))
   }
 
-  const grouped: Record<string, number> = {}
-  props.expenses.forEach(e => {
-    const monthKey = e.date.slice(0, 7)
-    grouped[monthKey] = (grouped[monthKey] ?? 0) + e.amount
-  })
+  const grouped = props.expenses.reduce<Record<string, number>>((acc, expense) => {
+    const monthKey = expense.date.slice(0, 7)
+    acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount
+    return acc
+  }, {})
 
   return Object.entries(grouped)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-6)
-    .map(([month, total]) => ({ label: month, value: toNumber(total) }))
+    .map(([month, total]) => ({ label: month, value: total }))
 })
 
 const currentMonthExpenses = computed(() => {
   const now = new Date()
-  const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
-  return props.expenses.filter(e => e.date.startsWith(currentMonth))
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return props.expenses.filter(expense => expense.date.startsWith(monthKey))
 })
+
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 </script>
-
-<style scoped>
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: var(--spacing-xl);
-  color: var(--gray-900);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-}
-
-.stat-card {
-  background: white;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--gray-200);
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--gray-600);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--spacing-sm);
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-}
-
-@media (max-width: 768px) {
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-
-.report-filters {
-  display: flex;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-  margin-bottom: var(--spacing-lg);
-}
-
-.filter-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-sm);
-  background: white;
-  cursor: pointer;
-}
-
-.filter-btn.active {
-  background: var(--secondary);
-  color: white;
-  border-color: var(--secondary);
-}
-</style>

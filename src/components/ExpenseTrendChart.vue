@@ -1,25 +1,30 @@
 <template>
-  <div class="card">
-    <h2 class="card-title">Expense Trend ({{ viewLabel }})</h2>
-    <p class="card-subtitle">{{ subtitle }}</p>
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h3 class="card-title">Expense trend</h3>
+        <p class="panel-copy">{{ subtitle }}</p>
+      </div>
+      <div class="panel-kpi">
+        <span>{{ viewLabel }} total</span>
+        <strong class="amount-negative">{{ formatCurrency(total) }}</strong>
+      </div>
+    </div>
+
     <div v-if="points.length === 0" class="empty-state">
-      <div class="empty-state-icon">📉</div>
-      <div class="empty-state-text">No data for selected period</div>
+      <div class="empty-state-title">No trend data for this range</div>
+      <p class="empty-state-copy">Record some expenses or switch views to populate the chart.</p>
     </div>
-    <div v-else>
-      <apexchart
-        type="line"
-        :options="chartOptions"
-        :series="chartSeries"
-        height="200"
-      ></apexchart>
+
+    <div v-else class="chart-frame">
+      <apexchart type="line" :options="chartOptions" :series="chartSeries" height="280"></apexchart>
     </div>
-    <div class="trend-summary">Total: {{ formatCurrency(total) }}</div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatCurrency } from '../lib/formatters'
 
 type TrendPoint = { label: string; value: number }
 
@@ -28,68 +33,86 @@ const props = defineProps<{
   view: 'daily' | 'weekly' | 'monthly'
 }>()
 
-const total = computed(() => props.points.reduce((sum, n) => sum + n.value, 0))
+const total = computed(() => props.points.reduce((sum, point) => sum + point.value, 0))
 
 const chartOptions = computed(() => ({
   chart: {
     type: 'line',
     toolbar: { show: false },
-    zoom: { enabled: false }
+    zoom: { enabled: false },
+    foreColor: '#52617a',
+    fontFamily: 'Aptos, Segoe UI Variable, Segoe UI, sans-serif'
   },
-  colors: ['#0d63b8'],
+  colors: ['#1e4ed8'],
   dataLabels: { enabled: false },
-  stroke: { curve: 'smooth', width: 3 },
-  grid: { show: true },
+  stroke: {
+    curve: 'smooth',
+    width: 4
+  },
+  grid: {
+    borderColor: 'rgba(116, 134, 166, 0.18)',
+    strokeDashArray: 4
+  },
+  markers: {
+    size: 5,
+    hover: { size: 7 }
+  },
+  fill: {
+    type: 'gradient',
+    gradient: {
+      shadeIntensity: 1,
+      opacityFrom: 0.32,
+      opacityTo: 0.04,
+      stops: [0, 90, 100]
+    }
+  },
   xaxis: {
-    categories: props.points.map(p => p.label),
-    labels: { style: { fontSize: '12px' } }
+    categories: props.points.map(point => point.label),
+    axisBorder: { show: false },
+    axisTicks: { show: false }
   },
   yaxis: {
     labels: {
-      formatter: (value: number) => formatCurrency(value),
-      style: { fontSize: '12px' }
+      formatter: (value: number) => formatCurrency(value)
     }
   },
   tooltip: {
+    theme: 'light',
     y: {
       formatter: (value: number) => formatCurrency(value)
     }
   }
 }))
 
-const chartSeries = computed(() => [{
-  name: 'Expenses',
-  data: props.points.map(p => p.value)
-}])
+const chartSeries = computed(() => [
+  {
+    name: 'Expenses',
+    data: props.points.map(point => point.value)
+  }
+])
 
 const viewLabel = computed(() => {
-  if (props.view === 'daily') return 'Daily'
-  if (props.view === 'weekly') return 'Weekly'
+  if (props.view === 'daily') {
+    return 'Daily'
+  }
+
+  if (props.view === 'weekly') {
+    return 'Weekly'
+  }
+
   return 'Monthly'
 })
 
 const subtitle = computed(() => {
   const count = props.points.length
-  if (props.view === 'daily') return `Last ${count} Days`
-  if (props.view === 'weekly') return `Last ${count} Weeks`
-  return `Last ${count} Months`
+  if (props.view === 'daily') {
+    return `Daily spending across the last ${count} recorded day${count === 1 ? '' : 's'}.`
+  }
+
+  if (props.view === 'weekly') {
+    return `Weekly spending across the last ${count} recorded week${count === 1 ? '' : 's'}.`
+  }
+
+  return `Monthly spending across the last ${count} recorded month${count === 1 ? '' : 's'}.`
 })
-
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'PHP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount).replace('PHP', '₱')
-}
 </script>
-
-<style scoped>
-.card { background: white; border-radius: var(--radius-lg); padding: var(--spacing-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); }
-.card-title { font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin-bottom: var(--spacing-md); }
-.card-subtitle { font-size: 0.875rem; color: var(--gray-600); margin-bottom: var(--spacing-md); margin-top: -var(--spacing-sm); }
-.trend-summary { margin-top: var(--spacing-md); font-size: 0.9rem; color: var(--gray-600); }
-.empty-state { text-align: center; color: var(--gray-500); padding: var(--spacing-lg) 0; }
-.empty-state-icon { font-size: 2rem; }
-</style>

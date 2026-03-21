@@ -1,22 +1,30 @@
 <template>
-  <div>
-    <h1 class="page-title">Income</h1>
-
-    <div class="grid-2">
+  <section class="page-section">
+    <div class="section-header">
       <div>
-        <IncomeForm @submit="handleAddIncome" />
+        <p class="eyebrow">Revenue</p>
+        <h2 class="section-title">Keep income records clean and current</h2>
+        <p class="section-copy">
+          Log earnings as they arrive so your balance, reporting, and savings decisions reflect real numbers.
+        </p>
       </div>
-      <div>
-        <TransactionList 
-          title="All Income" 
-          :items="incomes"
-          is-income
-          :show-delete="true"
-          @delete="$emit('delete-income', $event)"
-        />
+      <div class="section-meta">
+        <span class="label-muted">Income entries</span>
+        <strong class="amount-positive">{{ incomes.length }}</strong>
       </div>
     </div>
-  </div>
+
+    <div class="content-grid">
+      <IncomeForm @submit="handleAddIncome" />
+      <TransactionList
+        title="All income"
+        :items="incomes"
+        :is-income="true"
+        :show-delete="true"
+        @delete="$emit('delete-income', $event)"
+      />
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -34,35 +42,9 @@ const emit = defineEmits<{
 }>()
 
 const handleAddIncome = (incomeData: Omit<Income, 'id'>) => {
-  const income: Income = {
+  emit('add-income', {
     ...incomeData,
     id: Date.now().toString()
-  }
-  emit('add-income', income)
+  })
 }
 </script>
-
-<style scoped>
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: var(--spacing-xl);
-  color: var(--gray-900);
-}
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-@media (max-width: 768px) {
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

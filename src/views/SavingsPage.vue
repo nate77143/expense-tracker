@@ -1,20 +1,24 @@
 <template>
-  <div>
-    <h1 class="page-title">Savings</h1>
-
-    <div class="grid-2">
+  <section class="page-section">
+    <div class="section-header">
       <div>
-        <SavingsForm @submit="handleAddSaving" />
+        <p class="eyebrow">Reserves</p>
+        <h2 class="section-title">Build a clearer picture of savings</h2>
+        <p class="section-copy">
+          Track each bank balance and note the purpose behind your savings so long-term planning stays grounded.
+        </p>
       </div>
-      <div>
-        <SavingsList
-          title="Bank Savings"
-          :items="savings"
-          @delete="$emit('delete-saving', $event)"
-        />
+      <div class="section-meta">
+        <span class="label-muted">Savings accounts</span>
+        <strong class="amount-positive">{{ savings.length }}</strong>
       </div>
     </div>
-  </div>
+
+    <div class="content-grid">
+      <SavingsForm @submit="handleAddSaving" />
+      <SavingsList title="Bank savings" :items="savings" @delete="$emit('delete-saving', $event)" />
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -32,10 +36,9 @@ const emit = defineEmits<{
 }>()
 
 const handleAddSaving = (savingData: Omit<Saving, 'id'>) => {
-  const saving: Saving = {
+  emit('add-saving', {
     ...savingData,
     id: Date.now().toString()
-  }
-  emit('add-saving', saving)
+  })
 }
 </script>

@@ -1,29 +1,60 @@
 <template>
-  <form @submit.prevent="submitForm" class="card">
-    <h2 class="card-title">Add Savings</h2>
-
-    <div class="form-group">
-      <label for="savings-date">Date</label>
-      <input id="savings-date" v-model="form.date" type="date" required />
+  <section class="panel panel-strong">
+    <div class="panel-header">
+      <div>
+        <h3 class="card-title">Add savings</h3>
+        <p class="panel-copy">Track each bank allocation so your reserve balances stay visible and current.</p>
+      </div>
+      <span class="tag tag-success">Reserve fund</span>
     </div>
 
-    <div class="form-group">
-      <label for="savings-bank">Bank</label>
-      <input id="savings-bank" v-model="form.bank" type="text" placeholder="BDO, BPI..." required />
-    </div>
+    <form class="form-shell" @submit.prevent="submitForm">
+      <div class="field-grid">
+        <div class="form-group">
+          <label class="form-label" for="saving-date">Date</label>
+          <input id="saving-date" v-model="form.date" type="date" class="form-input" required />
+        </div>
 
-    <div class="form-group">
-      <label for="savings-amount">Amount (₱)</label>
-      <input id="savings-amount" v-model.number="form.amount" type="number" step="0.01" min="0" required />
-    </div>
+        <div class="form-group">
+          <label class="form-label" for="saving-bank">Bank</label>
+          <input
+            id="saving-bank"
+            v-model="form.bank"
+            type="text"
+            class="form-input"
+            placeholder="BDO, BPI, Metrobank"
+            required
+          />
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label for="savings-remarks">Remarks</label>
-      <textarea id="savings-remarks" v-model="form.remarks" placeholder="Optional note"></textarea>
-    </div>
+      <div class="form-group">
+        <label class="form-label" for="saving-amount">Amount (PHP)</label>
+        <input
+          id="saving-amount"
+          v-model.number="form.amount"
+          type="number"
+          min="0"
+          step="0.01"
+          class="form-input"
+          placeholder="0.00"
+          required
+        />
+      </div>
 
-    <button type="submit" class="btn btn-success btn-block">Add Savings</button>
-  </form>
+      <div class="form-group">
+        <label class="form-label" for="saving-remarks">Remarks</label>
+        <textarea
+          id="saving-remarks"
+          v-model="form.remarks"
+          class="form-textarea"
+          placeholder="Emergency fund, travel, tuition, or another goal"
+        ></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-success btn-block">Save savings entry</button>
+    </form>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -41,9 +72,18 @@ const form = ref({
   remarks: ''
 })
 
+const resetForm = () => {
+  form.value = {
+    date: new Date().toISOString().split('T')[0],
+    bank: '',
+    amount: 0,
+    remarks: ''
+  }
+}
+
 const submitForm = () => {
   if (!form.value.date || !form.value.bank || !form.value.amount) {
-    alert('Please fill in required fields')
+    alert('Please fill in all required fields.')
     return
   }
 
@@ -54,11 +94,6 @@ const submitForm = () => {
     remarks: form.value.remarks
   })
 
-  form.value = {
-    date: new Date().toISOString().split('T')[0],
-    bank: '',
-    amount: 0,
-    remarks: ''
-  }
+  resetForm()
 }
 </script>

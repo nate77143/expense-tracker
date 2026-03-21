@@ -1,21 +1,24 @@
 <template>
-  <div>
-    <h1 class="page-title">Expenses</h1>
-
-    <div class="grid-2">
+  <section class="page-section">
+    <div class="section-header">
       <div>
-        <ExpenseForm @submit="handleAddExpense" />
+        <p class="eyebrow">Spend Control</p>
+        <h2 class="section-title">Track every expense with context</h2>
+        <p class="section-copy">
+          Keep outgoing transactions organized by date, category, and notes so monthly reviews stay fast.
+        </p>
       </div>
-      <div>
-        <TransactionList 
-          title="All Expenses" 
-          :items="expenses"
-          :show-delete="true"
-          @delete="$emit('delete-expense', $event)"
-        />
+      <div class="section-meta">
+        <span class="label-muted">Total expenses</span>
+        <strong class="amount-negative">{{ expenses.length }}</strong>
       </div>
     </div>
-  </div>
+
+    <div class="content-grid">
+      <ExpenseForm @submit="handleAddExpense" />
+      <TransactionList title="All expenses" :items="expenses" :show-delete="true" @delete="$emit('delete-expense', $event)" />
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -33,35 +36,9 @@ const emit = defineEmits<{
 }>()
 
 const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
-  const expense: Expense = {
+  emit('add-expense', {
     ...expenseData,
     id: Date.now().toString()
-  }
-  emit('add-expense', expense)
+  })
 }
 </script>
-
-<style scoped>
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: var(--spacing-xl);
-  color: var(--gray-900);
-}
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-@media (max-width: 768px) {
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
