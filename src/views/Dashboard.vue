@@ -158,7 +158,10 @@
         </div>
       </div>
 
-      <ExpenseTrendChart :view="dashboardActiveView" :points="dashboardTrendPoints" />
+      <div class="content-grid">
+        <ExpenseTrendChart :view="dashboardActiveView" :points="dashboardTrendPoints" />
+        <SavingsTrendChart :points="dashboardSavingsTrendPoints" />
+      </div>
     </section>
 
     <div class="content-grid">
@@ -173,6 +176,7 @@ import { computed, ref } from 'vue'
 import CategoryChart from '../components/CategoryChart.vue'
 import ExpenseTrendChart from '../components/ExpenseTrendChart.vue'
 import ReportSection from '../components/ReportSection.vue'
+import SavingsTrendChart from '../components/SavingsTrendChart.vue'
 import TransactionList from '../components/TransactionList.vue'
 import { formatCompactCurrency, formatCurrency } from '../lib/formatters'
 import type { Expense, Income, Saving } from '../types'
@@ -365,6 +369,33 @@ const dashboardTrendPoints = computed(() => {
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-6)
     .map(([month, total]) => ({ label: month, value: total }))
+})
+
+const dashboardSavingsTrendPoints = computed(() => {
+  const groupedSavings = props.savings.reduce<Record<string, number>>((acc, saving) => {
+    const monthKey = saving.date.slice(0, 7)
+    acc[monthKey] = (acc[monthKey] ?? 0) + saving.amount
+    return acc
+  }, {})
+
+  const groupedSavingsSpend = props.expenses.reduce<Record<string, number>>((acc, expense) => {
+    if (expense.fundingSource !== 'savings') {
+      return acc
+    }
+
+    const monthKey = expense.date.slice(0, 7)
+    acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount
+    return acc
+  }, {})
+
+  const monthKeys = [...new Set([...Object.keys(groupedSavings), ...Object.keys(groupedSavingsSpend)])].sort((a, b) =>
+    a.localeCompare(b)
+  )
+
+  return monthKeys.slice(-6).map(month => ({
+    label: month,
+    value: (groupedSavings[month] ?? 0) - (groupedSavingsSpend[month] ?? 0)
+  }))
 })
 
 const currentMonthExpenses = computed(() => {

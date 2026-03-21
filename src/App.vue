@@ -84,7 +84,7 @@
             @add-saving="addSaving"
             @delete-saving="deleteSaving"
           />
-          <ReportsPage v-else-if="visiblePage === 'reports'" :expenses="expenses" />
+          <ReportsPage v-else-if="visiblePage === 'reports'" :expenses="expenses" :savings="savings" />
           <TrackersPage
             v-else-if="visiblePage === 'trackers'"
             :trackers="trackers"
@@ -225,8 +225,8 @@ const pageDetails: Record<PageId, { heading: string; description: string }> = {
     description: 'Monitor cash flow, savings momentum, and your latest transactions from one focused dashboard.'
   },
   expenses: {
-    heading: 'Expense management',
-    description: 'Capture spend quickly and keep every outgoing transaction organized by category and date.'
+    heading: 'Money movements',
+    description: 'Capture outgoing spending, transfers into savings, and which source funded each movement.'
   },
   income: {
     heading: 'Income tracking',

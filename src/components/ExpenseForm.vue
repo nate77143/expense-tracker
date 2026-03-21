@@ -2,10 +2,10 @@
   <section class="panel panel-strong">
     <div class="panel-header">
       <div>
-        <h3 class="card-title">Add expense</h3>
-        <p class="panel-copy">Record the amount, category, and any notes that will help during review.</p>
+        <h3 class="card-title">Add money movement</h3>
+        <p class="panel-copy">Record an outgoing expense or a transfer into savings with the right source and context.</p>
       </div>
-      <span class="tag">Outgoing</span>
+      <span class="tag">Movement</span>
     </div>
 
     <form class="form-shell" @submit.prevent="submitForm">

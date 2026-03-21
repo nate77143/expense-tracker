@@ -74,7 +74,7 @@ const mobileMenuOpen = ref(false)
 const items = computed(() => {
   return [
     { id: 'dashboard', label: 'Dashboard', copy: 'Overview' },
-    { id: 'expenses', label: 'Expenses', copy: 'Outgoing' },
+    { id: 'expenses', label: 'Money moves', copy: 'Outgoing' },
     { id: 'income', label: 'Income', copy: 'Incoming' },
     { id: 'savings', label: 'Savings', copy: 'Accounts' },
     { id: 'reports', label: 'Reports', copy: 'Insights' },

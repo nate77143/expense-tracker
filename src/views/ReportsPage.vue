@@ -27,6 +27,8 @@
       <ExpenseTrendChart :view="activeView" :points="trendPoints" />
     </div>
 
+    <SavingsTrendChart v-if="activeView === 'monthly'" :points="monthlySavingsTrendPoints" />
+
     <div v-if="activeView === 'daily'" class="stack">
       <ReportSection v-for="group in dailyReports" :key="group.date" :title="formatDate(group.date)" :items="group.items" />
     </div>
@@ -51,11 +53,13 @@ import { computed, ref } from 'vue'
 import CategoryChart from '../components/CategoryChart.vue'
 import ExpenseTrendChart from '../components/ExpenseTrendChart.vue'
 import ReportSection from '../components/ReportSection.vue'
+import SavingsTrendChart from '../components/SavingsTrendChart.vue'
 import { formatDate, formatMonth } from '../lib/formatters'
-import type { DailyReport, Expense, MonthlyReport, WeeklyReport } from '../types'
+import type { DailyReport, Expense, MonthlyReport, Saving, WeeklyReport } from '../types'
 
 const props = defineProps<{
   expenses: Expense[]
+  savings: Saving[]
 }>()
 
 const activeView = ref<'daily' | 'weekly' | 'monthly'>('monthly')
@@ -135,6 +139,33 @@ const trendPoints = computed(() => {
   }
 
   return monthlyReports.value.map(group => ({ label: group.month, value: group.total })).reverse()
+})
+
+const monthlySavingsTrendPoints = computed(() => {
+  const groupedSavings = props.savings.reduce<Record<string, number>>((acc, saving) => {
+    const monthKey = saving.date.slice(0, 7)
+    acc[monthKey] = (acc[monthKey] ?? 0) + saving.amount
+    return acc
+  }, {})
+
+  const groupedSavingsSpend = props.expenses.reduce<Record<string, number>>((acc, expense) => {
+    if (expense.fundingSource !== 'savings') {
+      return acc
+    }
+
+    const monthKey = expense.date.slice(0, 7)
+    acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount
+    return acc
+  }, {})
+
+  const monthKeys = [...new Set([...Object.keys(groupedSavings), ...Object.keys(groupedSavingsSpend)])].sort((a, b) =>
+    a.localeCompare(b)
+  )
+
+  return monthKeys.slice(-6).map(month => ({
+    label: month,
+    value: (groupedSavings[month] ?? 0) - (groupedSavingsSpend[month] ?? 0)
+  }))
 })
 
 const filteredExpenses = computed(() => {

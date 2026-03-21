@@ -127,19 +127,22 @@ export async function fetchAuditLogs(trackerId: string, limit = 20) {
 }
 
 export async function insertExpense(expense: Omit<Expense, 'id'>) {
+  const payload: Record<string, unknown> = {
+    tracker_id: expense.trackerId,
+    date: expense.date,
+    category: expense.category,
+    payment_source: expense.fundingSource,
+    amount: expense.amount,
+    remarks: expense.remarks
+  }
+
+  if (expense.fundingSource === 'savings' && expense.fundingSourceBank) {
+    payload.payment_source_bank = expense.fundingSourceBank
+  }
+
   const { data, error } = await supabase
     .from('expenses')
-    .insert([
-      {
-        tracker_id: expense.trackerId,
-        date: expense.date,
-        category: expense.category,
-        payment_source: expense.fundingSource,
-        payment_source_bank: expense.fundingSource === 'savings' ? expense.fundingSourceBank : null,
-        amount: expense.amount,
-        remarks: expense.remarks
-      }
-    ])
+    .insert([payload])
     .select('*')
     .single()
 

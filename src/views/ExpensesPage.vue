@@ -2,21 +2,21 @@
   <section class="page-section">
     <div class="section-header">
       <div>
-        <p class="eyebrow">Spend Control</p>
-        <h2 class="section-title">Track every expense with context</h2>
+        <p class="eyebrow">Money Movement</p>
+        <h2 class="section-title">Track outgoing money with context</h2>
         <p class="section-copy">
-          Keep outgoing transactions organized by date, category, and notes so monthly reviews stay fast.
+          Record everyday expenses, transfers into savings, and where each outgoing amount was funded from.
         </p>
       </div>
       <div class="section-meta">
-        <span class="label-muted">Total expenses</span>
+        <span class="label-muted">Total entries</span>
         <strong class="amount-negative">{{ expenses.length }}</strong>
       </div>
     </div>
 
     <div class="content-grid">
       <ExpenseForm :savings-banks="availableSavingsBanks" @submit="handleAddExpense" />
-      <TransactionList title="All expenses" :items="expenses" :show-delete="true" @delete="$emit('delete-expense', $event)" />
+      <TransactionList title="All money movements" :items="expenses" :show-delete="true" @delete="$emit('delete-expense', $event)" />
     </div>
   </section>
 </template>
