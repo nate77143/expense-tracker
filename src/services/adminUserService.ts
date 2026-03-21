@@ -76,15 +76,15 @@ export const createManagedUser = async (input: { email: string; password: string
 }
 
 export const deleteManagedUser = async (id: string) => {
-  await requestAdminApi('/api/admin/users', {
-    method: 'DELETE',
+  await requestAdminApi('/api/admin/users/remove', {
+    method: 'POST',
     body: JSON.stringify({ id })
   })
 }
 
 export const updateManagedUserApproval = async (id: string, approved: boolean) => {
-  const payload = await requestAdminApi('/api/admin/users', {
-    method: 'PATCH',
+  const payload = await requestAdminApi('/api/admin/users/approval', {
+    method: 'POST',
     body: JSON.stringify({ id, approved })
   })
 
