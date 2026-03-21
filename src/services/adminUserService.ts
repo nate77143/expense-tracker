@@ -76,15 +76,16 @@ export const createManagedUser = async (input: { email: string; password: string
 }
 
 export const deleteManagedUser = async (id: string) => {
-  await requestAdminApi(`/api/admin/users/${id}`, {
-    method: 'DELETE'
+  await requestAdminApi('/api/admin/users', {
+    method: 'DELETE',
+    body: JSON.stringify({ id })
   })
 }
 
 export const updateManagedUserApproval = async (id: string, approved: boolean) => {
-  const payload = await requestAdminApi(`/api/admin/users/${id}`, {
+  const payload = await requestAdminApi('/api/admin/users', {
     method: 'PATCH',
-    body: JSON.stringify({ approved })
+    body: JSON.stringify({ id, approved })
   })
 
   if (!payload || typeof payload !== 'object' || !('user' in payload)) {
