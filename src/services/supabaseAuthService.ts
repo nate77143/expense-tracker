@@ -25,7 +25,15 @@ export const signUpWithEmail = async (email: string, password: string) => {
 }
 
 export const signOutCurrentUser = async () => {
-  return supabase.auth.signOut()
+  const result = await supabase.auth.signOut()
+
+  if (!result.error) {
+    return result
+  }
+
+  // Fall back to clearing the local session so the current browser signs out
+  // even if the global revoke call is temporarily blocked.
+  return supabase.auth.signOut({ scope: 'local' })
 }
 
 export const subscribeToAuthChanges = (callback: (event: AuthChangeEvent, session: Session | null) => void) => {

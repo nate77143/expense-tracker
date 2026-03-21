@@ -485,8 +485,8 @@ onMounted(async () => {
   const { session: currentSession } = await getCurrentSession()
   await syncSession(currentSession)
 
-  const { data } = subscribeToAuthChanges(async (_event, nextSession) => {
-    await syncSession(nextSession)
+  const { data } = subscribeToAuthChanges((_event, nextSession) => {
+    void syncSession(nextSession)
   })
 
   authSubscription.value = data.subscription
@@ -501,7 +501,13 @@ const handleNavigatePage = (page: PageId) => {
 }
 
 const handleLogout = async () => {
-  await signOutCurrentUser()
+  authLoading.value = true
+
+  const { error } = await signOutCurrentUser()
+
+  if (error) {
+    await syncSession(null)
+  }
 }
 
 const removeLocalExpense = (id: string) => {

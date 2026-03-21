@@ -203,6 +203,16 @@
             <div class="user-row-title">{{ activityTitle(entry) }}</div>
             <div class="user-row-copy">{{ activityCopy(entry) }}</div>
             <div class="user-row-copy">{{ formatDateTime(entry.occurredAt) }}</div>
+            <div v-if="activityDetails(entry).length > 0" class="activity-detail-list">
+              <div
+                v-for="detail in activityDetails(entry)"
+                :key="`${entry.id}-${detail.label}-${detail.text}`"
+                class="activity-detail-item"
+                :class="detail.tone"
+              >
+                <strong>{{ detail.label }}:</strong> {{ detail.text }}
+              </div>
+            </div>
           </div>
 
           <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
@@ -217,7 +227,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { formatDateTime } from '../lib/formatters'
+import { formatCurrency, formatDate, formatDateTime } from '../lib/formatters'
 import type { BudgetAuditLog, Tracker, TrackerMember, TrackerRole } from '../types'
 
 const props = defineProps<{
@@ -369,6 +379,124 @@ const actionTone = (action: BudgetAuditLog['action']) => {
   return action === 'delete' ? 'tag-danger' : action === 'insert' ? 'tag-success' : ''
 }
 
+type ActivityDetail = {
+  label: string
+  text: string
+  tone: 'insert' | 'update' | 'delete'
+}
+
+const trackedFieldsByEntity: Record<BudgetAuditLog['entityType'], string[]> = {
+  trackers: ['name', 'description', 'is_personal'],
+  tracker_members: ['email', 'role', 'status'],
+  expenses: ['date', 'category', 'amount', 'remarks'],
+  incomes: ['date', 'source', 'amount', 'remarks'],
+  savings: ['date', 'bank', 'amount', 'remarks']
+}
+
+const fieldLabel = (field: string) => {
+  if (field === 'is_personal') return 'Personal tracker'
+  if (field === 'tracker_id') return 'Tracker'
+  return field
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const isEmptyAuditValue = (value: unknown) => {
+  return value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
+}
+
+const areAuditValuesEqual = (left: unknown, right: unknown) => {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+const formatAuditValue = (field: string, value: unknown) => {
+  if (isEmptyAuditValue(value)) {
+    return 'empty'
+  }
+
+  if (field === 'amount') {
+    const numericValue = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(numericValue) ? formatCurrency(numericValue) : String(value)
+  }
+
+  if (field === 'date' && typeof value === 'string') {
+    return formatDate(value)
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No'
+  }
+
+  return String(value)
+}
+
+const activityDetails = (entry: BudgetAuditLog): ActivityDetail[] => {
+  const oldData = entry.oldData ?? {}
+  const newData = entry.newData ?? {}
+  const fields = trackedFieldsByEntity[entry.entityType] ?? []
+
+  return fields.reduce<ActivityDetail[]>((details, field) => {
+    const oldValue = oldData[field]
+    const newValue = newData[field]
+
+    if (entry.action === 'insert') {
+      if (isEmptyAuditValue(newValue)) {
+        return details
+      }
+
+      details.push({
+          label: fieldLabel(field),
+          text: `Added ${formatAuditValue(field, newValue)}`,
+          tone: 'insert' as const
+      })
+      return details
+    }
+
+    if (entry.action === 'delete') {
+      if (isEmptyAuditValue(oldValue)) {
+        return details
+      }
+
+      details.push({
+          label: fieldLabel(field),
+          text: `Removed ${formatAuditValue(field, oldValue)}`,
+          tone: 'delete' as const
+      })
+      return details
+    }
+
+    if (areAuditValuesEqual(oldValue, newValue)) {
+      return details
+    }
+
+    if (isEmptyAuditValue(oldValue) && !isEmptyAuditValue(newValue)) {
+      details.push({
+          label: fieldLabel(field),
+          text: `Added ${formatAuditValue(field, newValue)}`,
+          tone: 'insert' as const
+      })
+      return details
+    }
+
+    if (!isEmptyAuditValue(oldValue) && isEmptyAuditValue(newValue)) {
+      details.push({
+          label: fieldLabel(field),
+          text: `Removed ${formatAuditValue(field, oldValue)}`,
+          tone: 'delete' as const
+      })
+      return details
+    }
+
+    details.push({
+      label: fieldLabel(field),
+      text: `${formatAuditValue(field, oldValue)} -> ${formatAuditValue(field, newValue)}`,
+      tone: 'update' as const
+    })
+    return details
+  }, [])
+}
+
 const activityTitle = (entry: BudgetAuditLog) => {
   const actor = entry.actorEmail || 'A user'
 
@@ -388,23 +516,17 @@ const activityTitle = (entry: BudgetAuditLog) => {
 }
 
 const activityCopy = (entry: BudgetAuditLog) => {
-  if (entry.entityType === 'expenses') {
-    return String(entry.newData?.category ?? entry.oldData?.category ?? 'Expense change')
+  const details = activityDetails(entry)
+
+  if (details.length === 0) {
+    return entry.action === 'update' ? 'Updated tracked values.' : 'Recorded this activity in the audit log.'
   }
 
-  if (entry.entityType === 'incomes') {
-    return String(entry.newData?.source ?? entry.oldData?.source ?? 'Income change')
+  if (entry.action === 'update') {
+    return `Changed ${details.length} field${details.length === 1 ? '' : 's'}.`
   }
 
-  if (entry.entityType === 'savings') {
-    return String(entry.newData?.bank ?? entry.oldData?.bank ?? 'Savings change')
-  }
-
-  if (entry.entityType === 'tracker_members') {
-    return String(entry.newData?.role ?? entry.oldData?.role ?? 'Membership change')
-  }
-
-  return String(entry.newData?.description ?? entry.oldData?.description ?? 'Tracker details changed')
+  return `${details.length} field${details.length === 1 ? '' : 's'} ${entry.action === 'insert' ? 'added' : 'removed'}.`
 }
 
 const handleDeleteTracker = (tracker: Tracker) => {

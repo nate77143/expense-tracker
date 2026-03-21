@@ -1093,6 +1093,43 @@ a {
   font-size: 0.88rem;
 }
 
+.activity-detail-list {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.activity-detail-item {
+  padding: 0.55rem 0.7rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: rgba(244, 247, 252, 0.9);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.activity-detail-item strong {
+  color: var(--text-primary);
+}
+
+.activity-detail-item.insert {
+  background: var(--success-soft);
+  border-color: rgba(23, 135, 95, 0.18);
+  color: var(--success);
+}
+
+.activity-detail-item.update {
+  background: rgba(30, 78, 216, 0.08);
+  border-color: rgba(30, 78, 216, 0.16);
+  color: var(--brand-deep);
+}
+
+.activity-detail-item.delete {
+  background: var(--danger-soft);
+  border-color: rgba(192, 61, 69, 0.18);
+  color: var(--danger);
+}
+
 .report-breakdown {
   display: grid;
   gap: 0.75rem;
