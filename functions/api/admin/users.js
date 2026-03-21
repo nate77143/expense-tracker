@@ -1,34 +1,33 @@
 import { createUser, jsonResponse, listUsers, mapManagedUser, requireAdmin } from '../../_lib/admin'
 import { deleteUserById, getUserById, updateUserById } from '../../_lib/admin'
 
-export async function onRequestGet(context) {
-  const auth = await requireAdmin(context)
-  if (auth.error) {
-    return auth.error
-  }
-
-  const { adminEmails } = auth
-  let data
-  try {
-    data = await listUsers(context)
-  } catch (error) {
-    return jsonResponse({ error: error instanceof Error ? error.message : 'Failed to list users.' }, 500)
-  }
-
-  const users = (data?.users ?? [])
-    .map(user => mapManagedUser(user, adminEmails))
-    .sort((a, b) => a.email.localeCompare(b.email))
-
-  return jsonResponse({ users })
-}
-
-export async function onRequestPost(context) {
+export async function onRequest(context) {
   const auth = await requireAdmin(context)
   if (auth.error) {
     return auth.error
   }
 
   const { adminEmails, currentUser } = auth
+  const method = context.request.method.toUpperCase()
+
+  if (method === 'GET') {
+    let data
+    try {
+      data = await listUsers(context)
+    } catch (error) {
+      return jsonResponse({ error: error instanceof Error ? error.message : 'Failed to list users.' }, 500)
+    }
+
+    const users = (data?.users ?? [])
+      .map(user => mapManagedUser(user, adminEmails))
+      .sort((a, b) => a.email.localeCompare(b.email))
+
+    return jsonResponse({ users })
+  }
+
+  if (method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed.' }, 405)
+  }
 
   let body
   try {
