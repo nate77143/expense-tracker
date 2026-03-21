@@ -1,5 +1,5 @@
-import { createUser, jsonResponse, mapManagedUser, requireAdmin } from '../../_lib/admin'
-import { deleteUserById, getUserById, updateUserById } from '../../_lib/admin'
+import { createUser, jsonResponse, mapManagedUser, requireAdmin } from '../../../_lib/admin'
+import { deleteUserById, getUserById, updateUserById } from '../../../_lib/admin'
 
 export async function onRequest(context) {
   if (context.request.method.toUpperCase() !== 'POST') {
