@@ -17,11 +17,27 @@ This repo should be deployed as a Cloudflare Pages project, not through Wrangler
 
 ## Deploy
 
+### If this project uses Cloudflare Pages Git integration
+
+Use Cloudflare's normal Pages build settings and do not set a custom deploy command.
+
+Dashboard settings:
+
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Root directory: leave blank unless your repo structure changes
+- Deploy command: leave blank
+
+When Cloudflare Pages is connected to Git, it automatically builds and deploys after the build finishes. Adding `npx wrangler deploy` as a deploy command makes Pages try to run the Worker deploy flow, which is the wrong product path for this repo.
+
+### If you deploy manually with Wrangler
+
 1. Make sure you are using Node 20 or newer locally.
 2. Install dependencies: `npm install`
 3. Build the app: `npm run build`
 4. Log in to Cloudflare: `npx wrangler login`
-5. Deploy to Pages: `npm run pages:deploy`
+5. Deploy to Pages: `npx wrangler pages deploy dist --project-name=<YOUR_PAGES_PROJECT_NAME>`
 
 For local Pages-style preview, use:
 
@@ -43,3 +59,4 @@ Set these in the Cloudflare Pages project settings:
 
 - Do not use `wrangler deploy` for this repo's current setup.
 - Do not let Wrangler auto-add `@cloudflare/vite-plugin` unless you intentionally upgrade the app to a Vite 6+ setup and refactor deployment around that.
+- Do not set `npx wrangler deploy` as a custom deploy command in a Git-integrated Pages project.
