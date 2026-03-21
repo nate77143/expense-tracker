@@ -63,7 +63,7 @@ export const fetchManagedUsers = async () => {
 }
 
 export const createManagedUser = async (input: { email: string; password: string; isAdmin: boolean }) => {
-  const payload = await requestAdminApi('/api/admin/users', {
+  const payload = await requestAdminApi('/api/admin/actions', {
     method: 'POST',
     body: JSON.stringify({
       action: 'create',
@@ -79,7 +79,7 @@ export const createManagedUser = async (input: { email: string; password: string
 }
 
 export const deleteManagedUser = async (id: string) => {
-  await requestAdminApi('/api/admin/users', {
+  await requestAdminApi('/api/admin/actions', {
     method: 'POST',
     body: JSON.stringify({
       action: 'remove',
@@ -89,7 +89,7 @@ export const deleteManagedUser = async (id: string) => {
 }
 
 export const updateManagedUserApproval = async (id: string, approved: boolean) => {
-  const payload = await requestAdminApi('/api/admin/users', {
+  const payload = await requestAdminApi('/api/admin/actions', {
     method: 'POST',
     body: JSON.stringify({
       action: 'approval',
