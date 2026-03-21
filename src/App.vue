@@ -204,7 +204,6 @@ import SavingsPage from './views/SavingsPage.vue'
 import SettingsPage from './views/SettingsPage.vue'
 import TrackersPage from './views/TrackersPage.vue'
 
-import { buildSampleWorkspace } from './data/sampleData'
 import { hasConfiguredAdminEmails, isAdminUser } from './lib/admin'
 import type { Expense, Income, Saving, Tracker, TrackerMember, TrackerRole } from './types'
 import {
@@ -233,7 +232,6 @@ import {
 } from './services/trackerService'
 
 type PageId = 'dashboard' | 'expenses' | 'income' | 'savings' | 'reports' | 'trackers' | 'settings'
-type SampleWorkspace = ReturnType<typeof buildSampleWorkspace>
 
 const currentPage = ref<PageId>('dashboard')
 const session = ref<Session | null>(null)
@@ -248,9 +246,7 @@ const authLoading = ref(true)
 const supabaseError = ref<string | null>(null)
 const workspaceNotice = ref<string | null>(null)
 const financeNotice = ref<string | null>(null)
-const usingSampleWorkspace = ref(false)
 const authSubscription = ref<{ unsubscribe: () => void } | null>(null)
-const sampleWorkspace = ref<SampleWorkspace | null>(null)
 
 const pageDetails: Record<PageId, { heading: string; description: string }> = {
   dashboard: {
@@ -320,33 +316,40 @@ const activePage = computed(() => {
 
 const totalRecords = computed(() => expenses.value.length + incomes.value.length + savings.value.length)
 
-const buildLocalWorkspace = () => {
-  const userId = session.value?.user.id ?? 'sample-user'
-  const email = session.value?.user.email ?? 'owner@example.com'
-  sampleWorkspace.value = buildSampleWorkspace(userId, email)
+type SupabaseErrorLike = {
+  code?: string
+  message?: string
+  details?: string
+  hint?: string
 }
 
-const applyWorkspaceFromSample = () => {
-  if (!sampleWorkspace.value) {
-    return
+const getSupabaseErrorMessage = (error: unknown) => {
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message
   }
 
-  trackers.value = [...sampleWorkspace.value.trackers]
-  trackerMembers.value = [...sampleWorkspace.value.trackerMembers]
-  activeTrackerId.value = trackers.value.find(tracker => tracker.id === activeTrackerId.value)?.id ?? trackers.value[0]?.id ?? ''
+  return 'Unknown Supabase error.'
 }
 
-const applyFinanceFromSample = (trackerId: string) => {
-  if (!sampleWorkspace.value) {
-    expenses.value = []
-    incomes.value = []
-    savings.value = []
-    return
+const isTrackerSchemaError = (error: unknown) => {
+  if (!error || typeof error !== 'object') {
+    return false
   }
 
-  expenses.value = sampleWorkspace.value.expenses.filter(expense => expense.trackerId === trackerId)
-  incomes.value = sampleWorkspace.value.incomes.filter(income => income.trackerId === trackerId)
-  savings.value = sampleWorkspace.value.savings.filter(saving => saving.trackerId === trackerId)
+  const candidate = error as SupabaseErrorLike
+  const message = `${candidate.message ?? ''} ${candidate.details ?? ''} ${candidate.hint ?? ''}`.toLowerCase()
+
+  return (
+    candidate.code === '42P01' ||
+    candidate.code === '42703' ||
+    message.includes('tracker_members') ||
+    message.includes('trackers') ||
+    message.includes('tracker_id') ||
+    message.includes('savings') ||
+    message.includes('does not exist') ||
+    message.includes('column') ||
+    message.includes('relation')
+  )
 }
 
 const resetLocalData = () => {
@@ -372,7 +375,6 @@ const loadWorkspace = async () => {
     return
   }
 
-  buildLocalWorkspace()
   workspaceNotice.value = null
 
   try {
@@ -387,7 +389,6 @@ const loadWorkspace = async () => {
 
     trackers.value = loadedTrackers ?? []
     trackerMembers.value = loadedMembers ?? []
-    usingSampleWorkspace.value = false
 
     if (trackers.value.length === 0) {
       activeTrackerId.value = ''
@@ -396,19 +397,18 @@ const loadWorkspace = async () => {
     }
 
     activeTrackerId.value = trackers.value.find(tracker => tracker.id === activeTrackerId.value)?.id ?? trackers.value[0].id
-  } catch {
-    usingSampleWorkspace.value = true
-    workspaceNotice.value =
-      'Tracker tables are not ready in Supabase yet, so the app is using local sample trackers. Run supabase/migrations/20260321_multi_tracker_schema.sql in Supabase SQL Editor to make sharing live.'
-    applyWorkspaceFromSample()
+  } catch (error) {
+    trackers.value = []
+    trackerMembers.value = []
+    activeTrackerId.value = ''
+    currentPage.value = 'trackers'
+    workspaceNotice.value = isTrackerSchemaError(error)
+      ? 'Tracker tables are not ready in Supabase yet. Run supabase/migrations/20260321_multi_tracker_schema.sql in Supabase SQL Editor to make sharing live.'
+      : `Could not load trackers from Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
 const loadActiveTrackerMembers = async (trackerId: string) => {
-  if (usingSampleWorkspace.value) {
-    return
-  }
-
   try {
     const { data, error } = await fetchTrackerMembers(trackerId)
 
@@ -417,9 +417,8 @@ const loadActiveTrackerMembers = async (trackerId: string) => {
     }
 
     replaceTrackerMembers(trackerId, data)
-  } catch {
-    workspaceNotice.value =
-      'Could not refresh tracker members from Supabase, so the app is keeping the latest local member list for now.'
+  } catch (error) {
+    workspaceNotice.value = `Could not refresh tracker members from Supabase, so the app is keeping the latest local member list for now. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -434,12 +433,6 @@ const loadTrackerData = async (trackerId: string) => {
   loading.value = true
   financeNotice.value = null
   supabaseError.value = null
-
-  if (usingSampleWorkspace.value) {
-    applyFinanceFromSample(trackerId)
-    loading.value = false
-    return
-  }
 
   try {
     const [{ data: expenseData, error: expenseError }, { data: incomeData, error: incomeError }, { data: savingData, error: savingError }] =
@@ -460,10 +453,13 @@ const loadTrackerData = async (trackerId: string) => {
     expenses.value = expenseData ?? []
     incomes.value = incomeData ?? []
     savings.value = savingData ?? []
-  } catch {
-    financeNotice.value =
-      'Tracker-specific finance tables are not ready in Supabase yet, so the selected tracker is showing local sample data instead. Run supabase/migrations/20260321_multi_tracker_schema.sql to finish the database setup.'
-    applyFinanceFromSample(trackerId)
+  } catch (error) {
+    expenses.value = []
+    incomes.value = []
+    savings.value = []
+    financeNotice.value = isTrackerSchemaError(error)
+      ? 'Tracker-specific finance tables are not ready in Supabase yet. Run supabase/migrations/20260321_multi_tracker_schema.sql to finish the database setup.'
+      : `Could not load tracker data from Supabase. ${getSupabaseErrorMessage(error)}`
   } finally {
     loading.value = false
   }
@@ -525,99 +521,16 @@ const handleLogout = async () => {
   await signOutCurrentUser()
 }
 
-const addLocalExpense = (expense: Expense) => {
-  expenses.value.unshift(expense)
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.expenses = [expense, ...sampleWorkspace.value.expenses.filter(item => item.id !== expense.id)]
-  }
-}
-
-const addLocalIncome = (income: Income) => {
-  incomes.value.unshift(income)
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.incomes = [income, ...sampleWorkspace.value.incomes.filter(item => item.id !== income.id)]
-  }
-}
-
-const addLocalSaving = (saving: Saving) => {
-  savings.value.unshift(saving)
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.savings = [saving, ...sampleWorkspace.value.savings.filter(item => item.id !== saving.id)]
-  }
-}
-
 const removeLocalExpense = (id: string) => {
   expenses.value = expenses.value.filter(expense => expense.id !== id)
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.expenses = sampleWorkspace.value.expenses.filter(expense => expense.id !== id)
-  }
 }
 
 const removeLocalIncome = (id: string) => {
   incomes.value = incomes.value.filter(income => income.id !== id)
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.incomes = sampleWorkspace.value.incomes.filter(income => income.id !== id)
-  }
 }
 
 const removeLocalSaving = (id: string) => {
   savings.value = savings.value.filter(saving => saving.id !== id)
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.savings = sampleWorkspace.value.savings.filter(saving => saving.id !== id)
-  }
-}
-
-const createLocalTracker = (input: { name: string; description: string; isPersonal: boolean }) => {
-  if (!session.value?.user.email) {
-    return
-  }
-
-  const tracker: Tracker = {
-    id: `tracker-${Date.now()}`,
-    name: input.name,
-    description: input.description,
-    createdAt: new Date().toISOString(),
-    isPersonal: input.isPersonal
-  }
-
-  const ownerMembership: TrackerMember = {
-    id: `member-${Date.now()}`,
-    trackerId: tracker.id,
-    userId: session.value.user.id,
-    email: session.value.user.email,
-    role: 'owner',
-    status: 'active',
-    joinedAt: new Date().toISOString()
-  }
-
-  trackers.value = [...trackers.value, tracker]
-  trackerMembers.value = [...trackerMembers.value, ownerMembership]
-  sampleWorkspace.value?.trackers.push(tracker)
-  sampleWorkspace.value?.trackerMembers.push(ownerMembership)
-  activeTrackerId.value = tracker.id
-  currentPage.value = 'dashboard'
-}
-
-const addLocalTrackerMember = (input: { trackerId: string; email: string; role: TrackerRole }) => {
-  const member: TrackerMember = {
-    id: `member-${Date.now()}`,
-    trackerId: input.trackerId,
-    email: input.email.toLowerCase(),
-    userId: null,
-    role: input.role,
-    status: 'invited',
-    joinedAt: new Date().toISOString()
-  }
-
-  trackerMembers.value = [...trackerMembers.value, member]
-  sampleWorkspace.value?.trackerMembers.push(member)
-}
-
-const removeLocalTrackerMember = (memberId: string) => {
-  trackerMembers.value = trackerMembers.value.filter(member => member.id !== memberId)
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.trackerMembers = sampleWorkspace.value.trackerMembers.filter(member => member.id !== memberId)
-  }
 }
 
 const removeLocalTracker = (trackerId: string) => {
@@ -626,14 +539,6 @@ const removeLocalTracker = (trackerId: string) => {
   expenses.value = expenses.value.filter(expense => expense.trackerId !== trackerId)
   incomes.value = incomes.value.filter(income => income.trackerId !== trackerId)
   savings.value = savings.value.filter(saving => saving.trackerId !== trackerId)
-
-  if (sampleWorkspace.value) {
-    sampleWorkspace.value.trackers = sampleWorkspace.value.trackers.filter(tracker => tracker.id !== trackerId)
-    sampleWorkspace.value.trackerMembers = sampleWorkspace.value.trackerMembers.filter(member => member.trackerId !== trackerId)
-    sampleWorkspace.value.expenses = sampleWorkspace.value.expenses.filter(expense => expense.trackerId !== trackerId)
-    sampleWorkspace.value.incomes = sampleWorkspace.value.incomes.filter(income => income.trackerId !== trackerId)
-    sampleWorkspace.value.savings = sampleWorkspace.value.savings.filter(saving => saving.trackerId !== trackerId)
-  }
 
   if (activeTrackerId.value === trackerId) {
     activeTrackerId.value = trackers.value[0]?.id ?? ''
@@ -646,13 +551,6 @@ const removeLocalTracker = (trackerId: string) => {
 
 const handleCreateTracker = async (input: { name: string; description: string; isPersonal: boolean }) => {
   if (!session.value?.user.email) {
-    return
-  }
-
-  if (usingSampleWorkspace.value) {
-    createLocalTracker(input)
-    workspaceNotice.value =
-      'Tracker tables are still running locally in sample mode, so the new tracker exists in this browser session only.'
     return
   }
 
@@ -671,21 +569,12 @@ const handleCreateTracker = async (input: { name: string; description: string; i
     trackerMembers.value = [...trackerMembers.value, ownerMembership]
     activeTrackerId.value = tracker.id
     currentPage.value = 'dashboard'
-  } catch {
-    createLocalTracker(input)
-    workspaceNotice.value =
-      'The tracker could not be saved to Supabase, so it was created locally for this session only.'
+  } catch (error) {
+    workspaceNotice.value = `The tracker could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
 const handleAddTrackerMember = async (input: { trackerId: string; email: string; role: TrackerRole }) => {
-  if (usingSampleWorkspace.value) {
-    addLocalTrackerMember(input)
-    workspaceNotice.value =
-      'Tracker members are currently running in local sample mode, so the new member exists in this browser session only.'
-    return
-  }
-
   try {
     const { data, error } = await addTrackerMember(input)
 
@@ -694,19 +583,12 @@ const handleAddTrackerMember = async (input: { trackerId: string; email: string;
     }
 
     trackerMembers.value = [...trackerMembers.value, data]
-  } catch {
-    addLocalTrackerMember(input)
-    workspaceNotice.value =
-      'The tracker member could not be saved to Supabase, so it was added locally for this session only.'
+  } catch (error) {
+    workspaceNotice.value = `The tracker member could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
 const handleRemoveTrackerMember = async (memberId: string) => {
-  if (usingSampleWorkspace.value) {
-    removeLocalTrackerMember(memberId)
-    return
-  }
-
   try {
     const { error } = await deleteTrackerMember(memberId)
 
@@ -715,21 +597,12 @@ const handleRemoveTrackerMember = async (memberId: string) => {
     }
 
     trackerMembers.value = trackerMembers.value.filter(member => member.id !== memberId)
-  } catch {
-    removeLocalTrackerMember(memberId)
-    workspaceNotice.value =
-      'The tracker member could not be removed from Supabase, so the app removed it locally for this session only.'
+  } catch (error) {
+    workspaceNotice.value = `The tracker member could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
 const handleDeleteTracker = async (trackerId: string) => {
-  if (usingSampleWorkspace.value) {
-    removeLocalTracker(trackerId)
-    workspaceNotice.value =
-      'This tracker was removed from local sample mode. Run the Supabase migration to make tracker deletion persistent.'
-    return
-  }
-
   try {
     const { error } = await deleteTrackerApi(trackerId)
 
@@ -738,10 +611,8 @@ const handleDeleteTracker = async (trackerId: string) => {
     }
 
     removeLocalTracker(trackerId)
-  } catch {
-    removeLocalTracker(trackerId)
-    workspaceNotice.value =
-      'The tracker could not be removed from Supabase, so the app removed it locally for this session only.'
+  } catch (error) {
+    workspaceNotice.value = `The tracker could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -760,9 +631,8 @@ const addExpense = async (expense: Expense) => {
     }
 
     expenses.value.unshift(data)
-  } catch {
-    supabaseError.value = 'The expense could not be saved to Supabase, so it was added locally only.'
-    addLocalExpense(expense)
+  } catch (error) {
+    supabaseError.value = `The expense could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -775,9 +645,8 @@ const deleteExpense = async (id: string) => {
     }
 
     removeLocalExpense(id)
-  } catch {
-    supabaseError.value = 'The expense could not be removed from Supabase, so it was removed locally only.'
-    removeLocalExpense(id)
+  } catch (error) {
+    supabaseError.value = `The expense could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -796,9 +665,8 @@ const addIncome = async (income: Income) => {
     }
 
     incomes.value.unshift(data)
-  } catch {
-    supabaseError.value = 'The income entry could not be saved to Supabase, so it was added locally only.'
-    addLocalIncome(income)
+  } catch (error) {
+    supabaseError.value = `The income entry could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -811,9 +679,8 @@ const deleteIncome = async (id: string) => {
     }
 
     removeLocalIncome(id)
-  } catch {
-    supabaseError.value = 'The income entry could not be removed from Supabase, so it was removed locally only.'
-    removeLocalIncome(id)
+  } catch (error) {
+    supabaseError.value = `The income entry could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -832,9 +699,8 @@ const addSaving = async (saving: Saving) => {
     }
 
     savings.value.unshift(data)
-  } catch {
-    supabaseError.value = 'The savings entry could not be saved to Supabase, so it was added locally only.'
-    addLocalSaving(saving)
+  } catch (error) {
+    supabaseError.value = `The savings entry could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -847,9 +713,8 @@ const deleteSaving = async (id: string) => {
     }
 
     removeLocalSaving(id)
-  } catch {
-    supabaseError.value = 'The savings entry could not be removed from Supabase, so it was removed locally only.'
-    removeLocalSaving(id)
+  } catch (error) {
+    supabaseError.value = `The savings entry could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 </script>

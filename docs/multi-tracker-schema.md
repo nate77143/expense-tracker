@@ -128,8 +128,20 @@ Examples to adapt:
 
 ## Current Frontend Behavior
 
-Until this schema exists in Supabase:
+The app now only shows real Supabase-backed tracker data.
 
-- the app falls back to local sample trackers
-- tracker creation/member management can still work locally in-session
-- shared live data is not fully enabled yet
+If the schema or policies are wrong:
+
+- tracker lists stay empty instead of falling back to fake local sample data
+- tracker and finance actions show the underlying Supabase error
+- the follow-up policy fix in [`supabase/migrations/20260321_fix_tracker_rls_recursion.sql`](/d:/code/expense-tracker/supabase/migrations/20260321_fix_tracker_rls_recursion.sql) should also be applied
+
+## Important Follow-up
+
+The first tracker migration used self-referential `tracker_members` RLS checks. In practice, that can cause 500 errors when selecting from `tracker_members`.
+
+Run this follow-up migration too:
+
+- [`supabase/migrations/20260321_fix_tracker_rls_recursion.sql`](/d:/code/expense-tracker/supabase/migrations/20260321_fix_tracker_rls_recursion.sql)
+
+It replaces those policies with security-definer helper functions so membership checks do not recurse through the same table policy.
