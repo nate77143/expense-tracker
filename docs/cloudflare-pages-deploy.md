@@ -7,14 +7,14 @@ This repo should be deployed as a Cloudflare Pages project, not through Wrangler
 - The frontend is a Vite SPA built into `dist`.
 - The admin APIs live in the root `functions/` directory as Cloudflare Pages Functions.
 - Letting `wrangler deploy` auto-detect the project can try to install `@cloudflare/vite-plugin`, which conflicts with this app's current Vite 4 setup.
+- For this repo's Git-based Pages deploys, the Cloudflare Pages dashboard build settings are the safest source of truth.
 
 ## Repo config
 
-- Pages config: [`wrangler.jsonc`](/d:/code/expense-tracker/wrangler.jsonc)
 - Build command: `npm run build`
 - Pages output directory: `dist`
 - Functions directory: `functions`
-- Functions runtime compatibility flag: `nodejs_compat`
+- Pages Functions compatibility flag: enable `nodejs_compat` in the Cloudflare dashboard if needed
 
 ## Deploy
 
@@ -29,6 +29,7 @@ Dashboard settings:
 - Build output directory: `dist`
 - Root directory: leave blank unless your repo structure changes
 - Deploy command: leave blank
+- Non-production deploy command: leave blank
 
 If your deploy log says `No build command specified. Skipping build step.`, the Pages project build command is still blank and Cloudflare will skip dependency installation before trying to bundle `functions/`.
 
@@ -63,3 +64,4 @@ Set these in the Cloudflare Pages project settings:
 - Do not use `wrangler deploy` for this repo's current setup.
 - Do not let Wrangler auto-add `@cloudflare/vite-plugin` unless you intentionally upgrade the app to a Vite 6+ setup and refactor deployment around that.
 - Do not set `npx wrangler deploy` as a custom deploy command in a Git-integrated Pages project.
+- Do not keep a Pages Wrangler config file in the repo unless you intentionally want that file to become the source of truth for the Pages project configuration.
