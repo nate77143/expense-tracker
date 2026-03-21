@@ -1,4 +1,4 @@
-import { createUser, jsonResponse, mapManagedUser, requireAdmin } from '../../../_lib/admin'
+import { createUser, jsonResponse, listUsers, mapManagedUser, requireAdmin } from '../../../_lib/admin'
 import { deleteUserById, getUserById, updateUserById } from '../../../_lib/admin'
 
 export async function onRequest(context) {
@@ -34,14 +34,15 @@ export async function onRequest(context) {
       return jsonResponse({ error: 'approved must be provided as a boolean.' }, 400)
     }
 
-    let existingData
+    let existingUser
     try {
-      existingData = await getUserById(context, userId)
+      const listedUsers = await listUsers(context)
+      existingUser = (listedUsers?.users ?? []).find(user => user.id === userId) ?? null
     } catch (error) {
       return jsonResponse({ error: error instanceof Error ? error.message : 'User not found.' }, 404)
     }
 
-    if (!existingData?.user) {
+    if (!existingUser) {
       return jsonResponse({ error: 'User not found.' }, 404)
     }
 
@@ -49,7 +50,7 @@ export async function onRequest(context) {
       return jsonResponse({ error: 'You cannot revoke approval from your own currently signed-in admin account.' }, 400)
     }
 
-    const currentAppMetadata = existingData.user.app_metadata ?? {}
+    const currentAppMetadata = existingUser.app_metadata ?? {}
     let data
     try {
       data = await updateUserById(context, userId, {

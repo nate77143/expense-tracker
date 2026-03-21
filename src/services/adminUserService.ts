@@ -43,7 +43,7 @@ const requestAdminApi = async (path: string, init?: RequestInit) => {
   const payload = contentType.includes('application/json') ? await response.json() : null
 
   if (!response.ok) {
-    if (response.status === 404) {
+    if (response.status === 404 && !payload?.error) {
       throw new Error('Admin API not configured yet. Deploy the Cloudflare Pages Functions to enable user management.')
     }
 
