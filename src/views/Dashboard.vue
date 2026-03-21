@@ -46,7 +46,7 @@
           <p class="metric-label">Available savings</p>
           <strong class="metric-value">{{ formatCompactCurrency(availableSavings) }}</strong>
         </div>
-        <p class="metric-copy">Savings records minus expenses that were explicitly paid from savings.</p>
+        <p class="metric-copy">Net savings after transfers in and withdrawals out have been recorded.</p>
       </article>
     </div>
 
@@ -126,7 +126,9 @@
                 <div class="bank-copy">{{ bank.entries }} record{{ bank.entries === 1 ? '' : 's' }}</div>
               </div>
             </div>
-            <strong class="saving-amount amount-positive">{{ formatCurrency(bank.amount) }}</strong>
+            <strong class="saving-amount" :class="bank.amount >= 0 ? 'amount-positive' : 'amount-negative'">
+              {{ formatCurrency(bank.amount) }}
+            </strong>
           </div>
         </div>
       </article>
@@ -204,7 +206,7 @@ const savingsFundedExpenses = computed(() =>
 )
 const netBalance = computed(() => totalIncome.value - incomeFundedExpenses.value)
 const totalRecordedSavings = computed(() => props.savings.reduce((sum, saving) => sum + saving.amount, 0))
-const availableSavings = computed(() => totalRecordedSavings.value - savingsFundedExpenses.value)
+const availableSavings = computed(() => totalRecordedSavings.value)
 
 const getMonthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
@@ -217,25 +219,15 @@ const previousMonthKey = computed(() => {
 })
 
 const currentMonthSavingsTotal = computed(() => {
-  const monthlySaved = props.savings
+  return props.savings
     .filter(saving => saving.date.startsWith(currentMonthKey.value))
     .reduce((sum, saving) => sum + saving.amount, 0)
-  const monthlySavingsSpend = props.expenses
-    .filter(expense => expense.fundingSource === 'savings' && expense.date.startsWith(currentMonthKey.value))
-    .reduce((sum, expense) => sum + expense.amount, 0)
-
-  return monthlySaved - monthlySavingsSpend
 })
 
 const previousMonthSavingsTotal = computed(() => {
-  const monthlySaved = props.savings
+  return props.savings
     .filter(saving => saving.date.startsWith(previousMonthKey.value))
     .reduce((sum, saving) => sum + saving.amount, 0)
-  const monthlySavingsSpend = props.expenses
-    .filter(expense => expense.fundingSource === 'savings' && expense.date.startsWith(previousMonthKey.value))
-    .reduce((sum, expense) => sum + expense.amount, 0)
-
-  return monthlySaved - monthlySavingsSpend
 })
 
 const savingsMovementDelta = computed(() => currentMonthSavingsTotal.value - previousMonthSavingsTotal.value)
@@ -378,23 +370,11 @@ const dashboardSavingsTrendPoints = computed(() => {
     return acc
   }, {})
 
-  const groupedSavingsSpend = props.expenses.reduce<Record<string, number>>((acc, expense) => {
-    if (expense.fundingSource !== 'savings') {
-      return acc
-    }
-
-    const monthKey = expense.date.slice(0, 7)
-    acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount
-    return acc
-  }, {})
-
-  const monthKeys = [...new Set([...Object.keys(groupedSavings), ...Object.keys(groupedSavingsSpend)])].sort((a, b) =>
-    a.localeCompare(b)
-  )
+  const monthKeys = Object.keys(groupedSavings).sort((a, b) => a.localeCompare(b))
 
   return monthKeys.slice(-6).map(month => ({
     label: month,
-    value: (groupedSavings[month] ?? 0) - (groupedSavingsSpend[month] ?? 0)
+    value: groupedSavings[month] ?? 0
   }))
 })
 

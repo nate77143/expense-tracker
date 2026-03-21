@@ -61,14 +61,44 @@
 
       <div class="form-group">
         <label class="form-label" for="expense-funding-source">Paid from</label>
-        <select id="expense-funding-source" v-model="form.fundingSource" class="form-select">
+        <select id="expense-funding-source" v-model="form.fundingSource" class="form-select" :disabled="form.category === 'Savings'">
           <option value="income">Income</option>
           <option value="savings">Savings</option>
         </select>
-        <span class="field-help">Choose where this expense was funded from. New expenses default to income.</span>
+        <span class="field-help">
+          {{
+            form.category === 'Savings'
+              ? 'Savings transfers are treated as money moving out of income and into a savings bank.'
+              : 'Choose where this expense was funded from. New expenses default to income.'
+          }}
+        </span>
       </div>
 
-      <div v-if="form.fundingSource === 'savings'" class="form-group">
+      <div v-if="form.category === 'Savings'" class="form-group">
+        <label class="form-label" for="expense-target-savings-bank">Transfer to savings bank</label>
+        <select
+          id="expense-target-savings-bank"
+          v-model="form.targetSavingsBank"
+          class="form-select"
+          :disabled="availableSavingsBanks.length === 0"
+        >
+          <option value="">
+            {{ availableSavingsBanks.length === 0 ? 'No savings bank available' : 'Select a savings bank' }}
+          </option>
+          <option v-for="bank in availableSavingsBanks" :key="bank" :value="bank">
+            {{ bank }}
+          </option>
+        </select>
+        <span class="field-help">
+          {{
+            availableSavingsBanks.length === 0
+              ? 'Add at least one savings record first before using the Savings category as a transfer.'
+              : 'Saving this movement will also create a matching savings record for the selected bank.'
+          }}
+        </span>
+      </div>
+
+      <div v-if="form.fundingSource === 'savings' && form.category !== 'Savings'" class="form-group">
         <label class="form-label" for="expense-funding-bank">Savings bank</label>
         <select
           id="expense-funding-bank"
@@ -102,7 +132,7 @@
         ></textarea>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block">Save expense</button>
+      <button type="submit" class="btn btn-primary btn-block">Save movement</button>
     </form>
   </section>
 </template>
@@ -131,6 +161,7 @@ const form = ref({
   amount: 0,
   fundingSource: 'income' as Expense['fundingSource'],
   fundingSourceBank: '',
+  targetSavingsBank: '',
   remarks: ''
 })
 
@@ -144,6 +175,7 @@ const resetForm = () => {
     amount: 0,
     fundingSource: 'income',
     fundingSourceBank: '',
+    targetSavingsBank: '',
     remarks: ''
   }
 }
@@ -191,6 +223,12 @@ const handleAddCategory = () => {
 }
 
 const syncFundingSourceBank = () => {
+  if (form.value.category === 'Savings') {
+    form.value.fundingSource = 'income'
+    form.value.fundingSourceBank = ''
+    return
+  }
+
   if (form.value.fundingSource !== 'savings') {
     form.value.fundingSourceBank = ''
     return
@@ -206,6 +244,22 @@ const syncFundingSourceBank = () => {
   }
 }
 
+const syncTargetSavingsBank = () => {
+  if (form.value.category !== 'Savings') {
+    form.value.targetSavingsBank = ''
+    return
+  }
+
+  if (availableSavingsBanks.value.length === 0) {
+    form.value.targetSavingsBank = ''
+    return
+  }
+
+  if (!availableSavingsBanks.value.includes(form.value.targetSavingsBank)) {
+    form.value.targetSavingsBank = availableSavingsBanks.value[0]
+  }
+}
+
 watch(
   () => form.value.fundingSource,
   () => {
@@ -214,9 +268,18 @@ watch(
 )
 
 watch(
+  () => form.value.category,
+  () => {
+    syncFundingSourceBank()
+    syncTargetSavingsBank()
+  }
+)
+
+watch(
   availableSavingsBanks,
   () => {
     syncFundingSourceBank()
+    syncTargetSavingsBank()
   },
   { immediate: true }
 )
@@ -232,12 +295,18 @@ const submitForm = () => {
     return
   }
 
+  if (form.value.category === 'Savings' && !form.value.targetSavingsBank) {
+    alert('Please select which savings bank should receive this transfer.')
+    return
+  }
+
   emit('submit', {
     date: form.value.date,
     category: form.value.category,
     amount: form.value.amount,
     fundingSource: form.value.fundingSource,
     fundingSourceBank: form.value.fundingSource === 'savings' ? form.value.fundingSourceBank : undefined,
+    targetSavingsBank: form.value.category === 'Savings' ? form.value.targetSavingsBank : undefined,
     remarks: form.value.remarks
   })
 

@@ -626,6 +626,42 @@ const addExpense = async (expense: Expense) => {
     }
 
     expenses.value.unshift(data)
+
+    const transferToSavings = expense.category === 'Savings' && expense.targetSavingsBank
+    const spendFromSavings = expense.category !== 'Savings' && expense.fundingSource === 'savings' && expense.fundingSourceBank
+
+    if (transferToSavings || spendFromSavings) {
+      const savingPayload = transferToSavings
+        ? {
+            trackerId: expense.trackerId,
+            date: expense.date,
+            bank: expense.targetSavingsBank as string,
+            amount: expense.amount,
+            remarks: expense.remarks?.trim()
+              ? `Transfer from money movement: ${expense.remarks.trim()}`
+              : 'Transfer from money movement'
+          }
+        : {
+            trackerId: expense.trackerId,
+            date: expense.date,
+            bank: expense.fundingSourceBank as string,
+            amount: -expense.amount,
+            remarks: expense.remarks?.trim()
+              ? `Deducted by money movement: ${expense.remarks.trim()}`
+              : 'Deducted by money movement'
+          }
+
+      const { data: savingData, error: savingError } = await insertSaving(savingPayload)
+
+      if (savingError || !savingData) {
+        await deleteExpenseApi(data.id)
+        removeLocalExpense(data.id)
+        throw savingError ?? new Error('Savings sync insert failed')
+      }
+
+      savings.value.unshift(savingData)
+    }
+
     await loadAuditActivity(expense.trackerId)
   } catch (error) {
     supabaseError.value = `The expense could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`

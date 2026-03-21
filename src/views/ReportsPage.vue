@@ -148,23 +148,11 @@ const monthlySavingsTrendPoints = computed(() => {
     return acc
   }, {})
 
-  const groupedSavingsSpend = props.expenses.reduce<Record<string, number>>((acc, expense) => {
-    if (expense.fundingSource !== 'savings') {
-      return acc
-    }
-
-    const monthKey = expense.date.slice(0, 7)
-    acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount
-    return acc
-  }, {})
-
-  const monthKeys = [...new Set([...Object.keys(groupedSavings), ...Object.keys(groupedSavingsSpend)])].sort((a, b) =>
-    a.localeCompare(b)
-  )
+  const monthKeys = Object.keys(groupedSavings).sort((a, b) => a.localeCompare(b))
 
   return monthKeys.slice(-6).map(month => ({
     label: month,
-    value: (groupedSavings[month] ?? 0) - (groupedSavingsSpend[month] ?? 0)
+    value: groupedSavings[month] ?? 0
   }))
 })
 

@@ -26,7 +26,9 @@
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <strong class="saving-amount amount-positive">{{ formatCurrency(item.amount) }}</strong>
+          <strong class="saving-amount" :class="item.amount >= 0 ? 'amount-positive' : 'amount-negative'">
+            {{ formatCurrency(item.amount) }}
+          </strong>
           <button type="button" class="btn btn-danger" @click="$emit('delete', item.id)">Remove</button>
         </div>
       </article>
