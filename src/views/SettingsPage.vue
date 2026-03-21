@@ -155,11 +155,11 @@
               id="audit-retention-days"
               v-model.number="auditRetentionDays"
               type="number"
-              min="1"
+              min="0"
               max="3650"
               class="form-input"
             />
-            <p class="field-help">Default recommendation is 90 days. You can change this to 60 later if you want a shorter window.</p>
+            <p class="field-help">Default recommendation is 90 days. Use 0 if you want to clear all existing audit logs right away.</p>
           </div>
 
           <button type="submit" class="btn btn-secondary" :disabled="cleaningAuditLogs">
@@ -301,7 +301,7 @@ const handleDeleteUser = async (user: ManagedUser) => {
 }
 
 const handleAuditLogCleanup = async () => {
-  if (!Number.isInteger(auditRetentionDays.value) || auditRetentionDays.value < 1) {
+  if (!Number.isInteger(auditRetentionDays.value) || auditRetentionDays.value < 0) {
     setStatus('Please enter a valid number of retention days.', 'warning')
     return
   }

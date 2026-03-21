@@ -15,8 +15,8 @@ export async function onRequestPost(context) {
 
   const retentionDays = Number(body.retentionDays)
 
-  if (!Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 3650) {
-    return jsonResponse({ error: 'retentionDays must be an integer between 1 and 3650.' }, 400)
+  if (!Number.isInteger(retentionDays) || retentionDays < 0 || retentionDays > 3650) {
+    return jsonResponse({ error: 'retentionDays must be an integer between 0 and 3650.' }, 400)
   }
 
   let deletedCount
