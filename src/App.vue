@@ -12,10 +12,10 @@
 
     <template v-else-if="session && isApproved">
       <Navigation
-        :current-page="currentPage"
+        :current-page="visiblePage"
         :user-email="session.user.email ?? ''"
         :is-admin="isAdmin"
-        @navigate="currentPage = $event"
+        @navigate="handleNavigatePage"
         @logout="handleLogout"
       />
 
@@ -57,35 +57,35 @@
           </div>
 
           <Dashboard
-            v-if="currentPage === 'dashboard'"
+            v-if="visiblePage === 'dashboard'"
             :expenses="expenses"
             :incomes="incomes"
             :savings="savings"
           />
           <ExpensesPage
-            v-else-if="currentPage === 'expenses'"
+            v-else-if="visiblePage === 'expenses'"
             :expenses="expenses"
             :active-tracker-id="activeTrackerId"
             @add-expense="addExpense"
             @delete-expense="deleteExpense"
           />
           <IncomePage
-            v-else-if="currentPage === 'income'"
+            v-else-if="visiblePage === 'income'"
             :incomes="incomes"
             :active-tracker-id="activeTrackerId"
             @add-income="addIncome"
             @delete-income="deleteIncome"
           />
           <SavingsPage
-            v-else-if="currentPage === 'savings'"
+            v-else-if="visiblePage === 'savings'"
             :savings="savings"
             :active-tracker-id="activeTrackerId"
             @add-saving="addSaving"
             @delete-saving="deleteSaving"
           />
-          <ReportsPage v-else-if="currentPage === 'reports'" :expenses="expenses" />
+          <ReportsPage v-else-if="visiblePage === 'reports'" :expenses="expenses" />
           <TrackersPage
-            v-else-if="currentPage === 'trackers'"
+            v-else-if="visiblePage === 'trackers'"
             :trackers="trackers"
             :members="trackerMembers"
             :activity-logs="auditLogs"
@@ -98,7 +98,7 @@
             @delete-tracker="handleDeleteTracker"
           />
           <SettingsPage
-            v-else-if="currentPage === 'settings' && isAdmin"
+            v-else-if="visiblePage === 'settings' && isAdmin"
             :current-user-id="session.user.id"
           />
         </section>
@@ -259,12 +259,16 @@ const isApproved = computed(() => {
 
 const activeTracker = computed(() => trackers.value.find(tracker => tracker.id === activeTrackerId.value) ?? null)
 
-const activePage = computed(() => {
+const visiblePage = computed<PageId>(() => {
   if (currentPage.value === 'settings' && !isAdmin.value) {
-    return pageDetails.dashboard
+    return 'dashboard'
   }
 
-  return pageDetails[currentPage.value]
+  return currentPage.value
+})
+
+const activePage = computed(() => {
+  return pageDetails[visiblePage.value]
 })
 
 type SupabaseErrorLike = {
@@ -491,6 +495,10 @@ onMounted(async () => {
 onUnmounted(() => {
   authSubscription.value?.unsubscribe()
 })
+
+const handleNavigatePage = (page: PageId) => {
+  currentPage.value = page === 'settings' && !isAdmin.value ? 'dashboard' : page
+}
 
 const handleLogout = async () => {
   await signOutCurrentUser()
