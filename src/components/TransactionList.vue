@@ -26,6 +26,9 @@
           <span class="tag" :class="isIncome ? 'tag-success' : ''">
             {{ itemLabel(item) }}
           </span>
+          <div v-if="!isIncome && 'fundingSource' in item" class="transaction-meta">
+            Paid from {{ item.fundingSource === 'savings' ? 'savings' : 'income' }}
+          </div>
           <div v-if="item.remarks" class="transaction-meta">{{ item.remarks }}</div>
         </div>
 

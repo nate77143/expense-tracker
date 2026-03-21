@@ -614,6 +614,7 @@ const addExpense = async (expense: Expense) => {
       trackerId: expense.trackerId,
       date: expense.date,
       category: expense.category,
+      fundingSource: expense.fundingSource,
       amount: expense.amount,
       remarks: expense.remarks
     })

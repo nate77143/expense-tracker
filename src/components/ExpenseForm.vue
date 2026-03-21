@@ -60,6 +60,15 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label" for="expense-funding-source">Paid from</label>
+        <select id="expense-funding-source" v-model="form.fundingSource" class="form-select">
+          <option value="income">Income</option>
+          <option value="savings">Savings</option>
+        </select>
+        <span class="field-help">Choose where this expense was funded from. New expenses default to income.</span>
+      </div>
+
+      <div class="form-group">
         <label class="form-label" for="expense-remarks">Remarks</label>
         <textarea
           id="expense-remarks"
@@ -92,6 +101,7 @@ const form = ref({
   date: new Date().toISOString().split('T')[0],
   category: '',
   amount: 0,
+  fundingSource: 'income' as Expense['fundingSource'],
   remarks: ''
 })
 
@@ -103,6 +113,7 @@ const resetForm = () => {
     date: new Date().toISOString().split('T')[0],
     category: '',
     amount: 0,
+    fundingSource: 'income',
     remarks: ''
   }
 }
@@ -158,6 +169,7 @@ const submitForm = () => {
     date: form.value.date,
     category: form.value.category,
     amount: form.value.amount,
+    fundingSource: form.value.fundingSource,
     remarks: form.value.remarks
   })
 

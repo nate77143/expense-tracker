@@ -77,6 +77,16 @@
             </div>
             <span class="tag">{{ recentExpenses.length + recentIncomes.length }} entries</span>
           </div>
+
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">Savings movement</p>
+              <strong>{{ savingsMovementLabel }}</strong>
+            </div>
+            <span class="tag" :class="savingsMovementTone">
+              {{ savingsMovementDeltaLabel }}
+            </span>
+          </div>
         </div>
       </article>
 
@@ -170,6 +180,67 @@ const totalExpenses = computed(() => props.expenses.reduce((sum, expense) => sum
 const totalIncome = computed(() => props.incomes.reduce((sum, income) => sum + income.amount, 0))
 const netBalance = computed(() => totalIncome.value - totalExpenses.value)
 const totalSavings = computed(() => props.savings.reduce((sum, saving) => sum + saving.amount, 0))
+
+const getMonthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+const currentMonthKey = computed(() => getMonthKey(new Date()))
+
+const previousMonthKey = computed(() => {
+  const date = new Date()
+  date.setMonth(date.getMonth() - 1)
+  return getMonthKey(date)
+})
+
+const currentMonthSavingsTotal = computed(() => {
+  return props.savings
+    .filter(saving => saving.date.startsWith(currentMonthKey.value))
+    .reduce((sum, saving) => sum + saving.amount, 0)
+})
+
+const previousMonthSavingsTotal = computed(() => {
+  return props.savings
+    .filter(saving => saving.date.startsWith(previousMonthKey.value))
+    .reduce((sum, saving) => sum + saving.amount, 0)
+})
+
+const savingsMovementDelta = computed(() => currentMonthSavingsTotal.value - previousMonthSavingsTotal.value)
+
+const savingsMovementLabel = computed(() => {
+  if (currentMonthSavingsTotal.value === 0 && previousMonthSavingsTotal.value === 0) {
+    return 'No savings entries yet'
+  }
+
+  return `${formatCurrency(currentMonthSavingsTotal.value)} saved this month`
+})
+
+const savingsMovementDeltaLabel = computed(() => {
+  if (currentMonthSavingsTotal.value === 0 && previousMonthSavingsTotal.value === 0) {
+    return 'Waiting for data'
+  }
+
+  if (savingsMovementDelta.value === 0) {
+    return 'Flat vs last month'
+  }
+
+  const direction = savingsMovementDelta.value > 0 ? '+' : '-'
+  return `${direction}${formatCurrency(Math.abs(savingsMovementDelta.value))} vs last month`
+})
+
+const savingsMovementTone = computed(() => {
+  if (currentMonthSavingsTotal.value === 0 && previousMonthSavingsTotal.value === 0) {
+    return ''
+  }
+
+  if (savingsMovementDelta.value > 0) {
+    return 'tag-success'
+  }
+
+  if (savingsMovementDelta.value < 0) {
+    return 'tag-danger'
+  }
+
+  return ''
+})
 
 const balanceCopy = computed(() => {
   if (netBalance.value >= 0) {

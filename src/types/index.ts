@@ -1,6 +1,7 @@
 export type TrackerRole = 'owner' | 'admin' | 'member' | 'viewer'
 export type TrackerMemberStatus = 'active' | 'invited'
 export type AuditLogAction = 'insert' | 'update' | 'delete'
+export type ExpenseFundingSource = 'income' | 'savings'
 
 export interface Tracker {
   id: string
@@ -43,6 +44,7 @@ export interface Transaction {
 
 export interface Expense extends Transaction {
   category: string
+  fundingSource: ExpenseFundingSource
 }
 
 export interface Income extends Transaction {

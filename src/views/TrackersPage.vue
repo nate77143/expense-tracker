@@ -378,13 +378,14 @@ type ActivityDetail = {
 const trackedFieldsByEntity: Record<BudgetAuditLog['entityType'], string[]> = {
   trackers: ['name', 'description', 'is_personal'],
   tracker_members: ['email', 'role', 'status'],
-  expenses: ['date', 'category', 'amount', 'remarks'],
-  incomes: ['date', 'source', 'amount', 'remarks'],
-  savings: ['date', 'bank', 'amount', 'remarks']
+  expenses: ['amount', 'category', 'payment_source', 'remarks', 'date'],
+  incomes: ['amount', 'source', 'remarks', 'date'],
+  savings: ['amount', 'bank', 'remarks', 'date']
 }
 
 const fieldLabel = (field: string) => {
   if (field === 'is_personal') return 'Personal tracker'
+  if (field === 'payment_source') return 'Paid from'
   if (field === 'tracker_id') return 'Tracker'
   return field
     .split('_')
@@ -506,6 +507,58 @@ const activityTitle = (entry: BudgetAuditLog) => {
 }
 
 const activityCopy = (entry: BudgetAuditLog) => {
+  const currentData = entry.newData ?? entry.oldData ?? {}
+
+  if (entry.entityType === 'savings') {
+    const amount = currentData.amount
+    const bank = String(currentData.bank ?? '').trim()
+    const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
+
+    if (!isEmptyAuditValue(amount) || bank || date) {
+      const pieces = [
+        !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '',
+        bank ? `at ${bank}` : '',
+        date ? `on ${date}` : ''
+      ].filter(Boolean)
+
+      return pieces.join(' ')
+    }
+  }
+
+  if (entry.entityType === 'expenses') {
+    const amount = currentData.amount
+    const category = String(currentData.category ?? '').trim()
+    const fundingSource = String(currentData.payment_source ?? '').trim()
+    const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
+
+    if (!isEmptyAuditValue(amount) || category || date) {
+      const pieces = [
+        category || 'Expense',
+        !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '',
+        fundingSource ? `from ${fundingSource}` : '',
+        date ? `on ${date}` : ''
+      ].filter(Boolean)
+
+      return pieces.join(' · ')
+    }
+  }
+
+  if (entry.entityType === 'incomes') {
+    const amount = currentData.amount
+    const source = String(currentData.source ?? '').trim()
+    const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
+
+    if (!isEmptyAuditValue(amount) || source || date) {
+      const pieces = [
+        source || 'Income',
+        !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '',
+        date ? `on ${date}` : ''
+      ].filter(Boolean)
+
+      return pieces.join(' · ')
+    }
+  }
+
   const details = activityDetails(entry)
   const leadDetail = details[0]
 

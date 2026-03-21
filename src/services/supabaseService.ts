@@ -6,6 +6,7 @@ type ExpenseRow = {
   tracker_id?: string
   date: string
   category: string
+  payment_source?: 'income' | 'savings' | null
   amount: number
   remarks: string
 }
@@ -46,6 +47,7 @@ const mapExpense = (row: ExpenseRow): Expense => ({
   trackerId: row.tracker_id ?? '',
   date: row.date,
   category: row.category,
+  fundingSource: row.payment_source === 'savings' ? 'savings' : 'income',
   amount: row.amount,
   remarks: row.remarks
 })
@@ -130,6 +132,7 @@ export async function insertExpense(expense: Omit<Expense, 'id'>) {
         tracker_id: expense.trackerId,
         date: expense.date,
         category: expense.category,
+        payment_source: expense.fundingSource,
         amount: expense.amount,
         remarks: expense.remarks
       }
