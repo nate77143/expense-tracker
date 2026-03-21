@@ -1,5 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
-
 const json = (payload, status = 200) =>
   new Response(JSON.stringify(payload), {
     status,
@@ -24,6 +22,88 @@ const getBearerToken = request => {
   return authHeader.slice(7).trim()
 }
 
+const normalizeBaseUrl = url => String(url ?? '').replace(/\/+$/, '')
+
+const readJson = async response => {
+  const text = await response.text()
+
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { error: text }
+  }
+}
+
+const extractErrorMessage = payload =>
+  payload?.msg ?? payload?.message ?? payload?.error_description ?? payload?.error ?? null
+
+const supabaseAuthRequest = async (context, path, { method = 'GET', body, accessToken, admin = false } = {}) => {
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
+  const baseUrl = normalizeBaseUrl(SUPABASE_URL)
+  const url = `${baseUrl}${path}`
+  const headers = {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${admin ? SUPABASE_SERVICE_ROLE_KEY : accessToken}`
+  }
+
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body)
+  })
+
+  const payload = await readJson(response)
+
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(payload) ?? `Supabase Auth request failed (${response.status}).`)
+  }
+
+  return payload
+}
+
+export const getCurrentUser = async (context, accessToken) =>
+  supabaseAuthRequest(context, '/auth/v1/user', {
+    accessToken
+  })
+
+export const listUsers = async context =>
+  supabaseAuthRequest(context, '/auth/v1/admin/users', {
+    admin: true
+  })
+
+export const createUser = async (context, payload) =>
+  supabaseAuthRequest(context, '/auth/v1/admin/users', {
+    method: 'POST',
+    body: payload,
+    admin: true
+  })
+
+export const getUserById = async (context, userId) =>
+  supabaseAuthRequest(context, `/auth/v1/admin/users/${userId}`, {
+    admin: true
+  })
+
+export const updateUserById = async (context, userId, payload) =>
+  supabaseAuthRequest(context, `/auth/v1/admin/users/${userId}`, {
+    method: 'PUT',
+    body: payload,
+    admin: true
+  })
+
+export const deleteUserById = async (context, userId) =>
+  supabaseAuthRequest(context, `/auth/v1/admin/users/${userId}`, {
+    method: 'DELETE',
+    admin: true
+  })
+
 export const requireAdmin = async context => {
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_EMAILS } = context.env
 
@@ -45,19 +125,10 @@ export const requireAdmin = async context => {
     }
   }
 
-  const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
-  })
-
-  const {
-    data: { user },
-    error: userError
-  } = await adminClient.auth.getUser(accessToken)
-
-  if (userError || !user) {
+  let user
+  try {
+    user = await getCurrentUser(context, accessToken)
+  } catch {
     return {
       error: json({ error: 'Invalid or expired session.' }, 401)
     }
@@ -73,7 +144,6 @@ export const requireAdmin = async context => {
   }
 
   return {
-    adminClient,
     adminEmails,
     currentUser: user
   }

@@ -1,4 +1,4 @@
-import { jsonResponse, mapManagedUser, requireAdmin } from '../../_lib/admin'
+import { createUser, jsonResponse, listUsers, mapManagedUser, requireAdmin } from '../../_lib/admin'
 
 export async function onRequestGet(context) {
   const auth = await requireAdmin(context)
@@ -6,11 +6,12 @@ export async function onRequestGet(context) {
     return auth.error
   }
 
-  const { adminClient, adminEmails } = auth
-  const { data, error } = await adminClient.auth.admin.listUsers()
-
-  if (error) {
-    return jsonResponse({ error: error.message }, 500)
+  const { adminEmails } = auth
+  let data
+  try {
+    data = await listUsers(context)
+  } catch (error) {
+    return jsonResponse({ error: error instanceof Error ? error.message : 'Failed to list users.' }, 500)
   }
 
   const users = (data?.users ?? [])
@@ -26,7 +27,7 @@ export async function onRequestPost(context) {
     return auth.error
   }
 
-  const { adminClient, adminEmails } = auth
+  const { adminEmails } = auth
 
   let body
   try {
@@ -47,18 +48,23 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: 'Password must be at least 6 characters long.' }, 400)
   }
 
-  const { data, error } = await adminClient.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    app_metadata: {
-      approved: true,
-      ...(isAdmin ? { role: 'admin' } : {})
-    }
-  })
+  let data
+  try {
+    data = await createUser(context, {
+      email,
+      password,
+      email_confirm: true,
+      app_metadata: {
+        approved: true,
+        ...(isAdmin ? { role: 'admin' } : {})
+      }
+    })
+  } catch (error) {
+    return jsonResponse({ error: error instanceof Error ? error.message : 'Failed to create user.' }, 500)
+  }
 
-  if (error || !data?.user) {
-    return jsonResponse({ error: error?.message ?? 'Failed to create user.' }, 500)
+  if (!data?.user) {
+    return jsonResponse({ error: 'Failed to create user.' }, 500)
   }
 
   return jsonResponse({ user: mapManagedUser(data.user, adminEmails) }, 201)
