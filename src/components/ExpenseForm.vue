@@ -27,6 +27,24 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label" for="custom-expense-category">Add new category</label>
+        <div class="input-action-row">
+          <input
+            id="custom-expense-category"
+            v-model="newCategory"
+            type="text"
+            class="form-input"
+            placeholder="Examples: Pets, Education, Travel"
+            @keydown.enter.prevent="handleAddCategory"
+          />
+          <button type="button" class="btn btn-secondary" @click="handleAddCategory">
+            Add category
+          </button>
+        </div>
+        <span class="field-help">{{ categoryHelpText }}</span>
+      </div>
+
+      <div class="form-group">
         <label class="form-label" for="expense-amount">Amount (PHP)</label>
         <input
           id="expense-amount"
@@ -57,8 +75,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { EXPENSE_CATEGORIES } from '../constants/categories'
+import {
+  getSavedExpenseCategories,
+  normalizeCategoryName,
+  saveExpenseCategories
+} from '../lib/expenseCategories'
 import type { Expense } from '../types'
 
 const emit = defineEmits<{
@@ -72,7 +95,8 @@ const form = ref({
   remarks: ''
 })
 
-const categories = computed(() => EXPENSE_CATEGORIES)
+const customCategories = ref<string[]>([])
+const newCategory = ref('')
 
 const resetForm = () => {
   form.value = {
@@ -81,6 +105,47 @@ const resetForm = () => {
     amount: 0,
     remarks: ''
   }
+}
+
+onMounted(() => {
+  customCategories.value = getSavedExpenseCategories()
+})
+
+const categories = computed(() => [...EXPENSE_CATEGORIES, ...customCategories.value])
+
+const categoryHelpText = computed(() => {
+  if (customCategories.value.length === 0) {
+    return 'Custom categories will be saved in this browser for future expense entries.'
+  }
+
+  return `${customCategories.value.length} custom categor${customCategories.value.length === 1 ? 'y' : 'ies'} saved in this browser.`
+})
+
+const handleAddCategory = () => {
+  const normalizedValue = normalizeCategoryName(newCategory.value)
+
+  if (!normalizedValue) {
+    alert('Please enter a category name first.')
+    return
+  }
+
+  const categoryAlreadyExists = categories.value.some(
+    category => category.toLowerCase() === normalizedValue.toLowerCase()
+  )
+
+  if (categoryAlreadyExists) {
+    form.value.category = categories.value.find(
+      category => category.toLowerCase() === normalizedValue.toLowerCase()
+    ) ?? normalizedValue
+    newCategory.value = ''
+    alert('That category already exists, so it has been selected for you.')
+    return
+  }
+
+  customCategories.value = [...customCategories.value, normalizedValue].sort((a, b) => a.localeCompare(b))
+  saveExpenseCategories(customCategories.value)
+  form.value.category = normalizedValue
+  newCategory.value = ''
 }
 
 const submitForm = () => {
