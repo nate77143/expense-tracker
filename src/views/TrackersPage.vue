@@ -203,16 +203,6 @@
             <div class="user-row-title">{{ activityTitle(entry) }}</div>
             <div class="user-row-copy">{{ activityCopy(entry) }}</div>
             <div class="user-row-copy">{{ formatDateTime(entry.occurredAt) }}</div>
-            <div v-if="activityDetails(entry).length > 0" class="activity-detail-list">
-              <div
-                v-for="detail in activityDetails(entry)"
-                :key="`${entry.id}-${detail.label}-${detail.text}`"
-                class="activity-detail-item"
-                :class="detail.tone"
-              >
-                <strong>{{ detail.label }}:</strong> {{ detail.text }}
-              </div>
-            </div>
           </div>
 
           <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
@@ -517,16 +507,17 @@ const activityTitle = (entry: BudgetAuditLog) => {
 
 const activityCopy = (entry: BudgetAuditLog) => {
   const details = activityDetails(entry)
+  const leadDetail = details[0]
 
-  if (details.length === 0) {
+  if (!leadDetail) {
     return entry.action === 'update' ? 'Updated tracked values.' : 'Recorded this activity in the audit log.'
   }
 
-  if (entry.action === 'update') {
-    return `Changed ${details.length} field${details.length === 1 ? '' : 's'}.`
+  if (details.length === 1) {
+    return `${leadDetail.label}: ${leadDetail.text}`
   }
 
-  return `${details.length} field${details.length === 1 ? '' : 's'} ${entry.action === 'insert' ? 'added' : 'removed'}.`
+  return `${leadDetail.label}: ${leadDetail.text} and ${details.length - 1} more change${details.length === 2 ? '' : 's'}.`
 }
 
 const handleDeleteTracker = (tracker: Tracker) => {
