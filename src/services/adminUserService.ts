@@ -10,6 +10,11 @@ export interface ManagedUser {
   isApproved: boolean
 }
 
+export interface AuditLogCleanupResult {
+  deletedCount: number
+  retentionDays: number
+}
+
 const getAccessToken = async () => {
   const {
     data: { session }
@@ -87,4 +92,22 @@ export const updateManagedUserApproval = async (id: string, approved: boolean) =
   }
 
   return (payload as { user: ManagedUser }).user
+}
+
+export const cleanupManagedAuditLogs = async (retentionDays: number) => {
+  const payload = await requestAdminApi('/api/admin/audit-logs/cleanup', {
+    method: 'POST',
+    body: JSON.stringify({ retentionDays })
+  })
+
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Admin API returned an unexpected response while cleaning audit logs.')
+  }
+
+  const result = payload as Partial<AuditLogCleanupResult>
+
+  return {
+    deletedCount: typeof result.deletedCount === 'number' ? result.deletedCount : 0,
+    retentionDays: typeof result.retentionDays === 'number' ? result.retentionDays : retentionDays
+  }
 }

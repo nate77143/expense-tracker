@@ -12,6 +12,7 @@ Admin capabilities:
 - Create a user with email and password
 - Mark a created user as admin
 - Delete a user
+- Trigger audit-log cleanup from the Settings page
 
 ## How Admin Access Is Determined
 
@@ -55,7 +56,9 @@ ADMIN_EMAILS=owner@example.com,admin@example.com
 - Do not expose `SUPABASE_SERVICE_ROLE_KEY` to the frontend.
 - User management runs through Cloudflare Pages Functions so the service role key stays server-side.
 - The frontend calls `/api/admin/users` with the signed-in user's bearer token.
+- The audit-log cleanup button calls `/api/admin/audit-logs/cleanup`.
 - The server validates that token and checks whether the current user is admin before performing any action.
+- Audit-log cleanup requires the SQL helper from [`supabase/migrations/20260321_budget_audit_retention_90_days.sql`](/d:/code/expense-tracker/supabase/migrations/20260321_budget_audit_retention_90_days.sql).
 
 ## Local Development Note
 

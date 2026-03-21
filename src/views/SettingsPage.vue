@@ -138,6 +138,35 @@
           </article>
         </div>
       </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="card-title">Audit log retention</h3>
+            <p class="panel-copy">Delete old budget activity logs without opening Supabase SQL Editor.</p>
+          </div>
+          <span class="tag">Admin only</span>
+        </div>
+
+        <form class="form-shell" @submit.prevent="handleAuditLogCleanup">
+          <div class="form-group">
+            <label class="form-label" for="audit-retention-days">Keep logs for this many days</label>
+            <input
+              id="audit-retention-days"
+              v-model.number="auditRetentionDays"
+              type="number"
+              min="1"
+              max="3650"
+              class="form-input"
+            />
+            <p class="field-help">Default recommendation is 90 days. You can change this to 60 later if you want a shorter window.</p>
+          </div>
+
+          <button type="submit" class="btn btn-secondary" :disabled="cleaningAuditLogs">
+            {{ cleaningAuditLogs ? 'Cleaning logs...' : 'Clean old logs' }}
+          </button>
+        </form>
+      </section>
     </div>
   </section>
 </template>
@@ -145,6 +174,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
+  cleanupManagedAuditLogs,
   createManagedUser,
   deleteManagedUser,
   fetchManagedUsers,
@@ -159,10 +189,12 @@ const { currentUserId } = defineProps<{
 const users = ref<ManagedUser[]>([])
 const loadingUsers = ref(false)
 const creatingUser = ref(false)
+const cleaningAuditLogs = ref(false)
 const deletingUserId = ref('')
 const approvalUserId = ref('')
 const statusMessage = ref('')
 const statusTone = ref<'default' | 'warning'>('default')
+const auditRetentionDays = ref(90)
 
 const createForm = reactive({
   email: '',
@@ -265,6 +297,32 @@ const handleDeleteUser = async (user: ManagedUser) => {
     setStatus(error instanceof Error ? error.message : 'Failed to remove the user.', 'warning')
   } finally {
     deletingUserId.value = ''
+  }
+}
+
+const handleAuditLogCleanup = async () => {
+  if (!Number.isInteger(auditRetentionDays.value) || auditRetentionDays.value < 1) {
+    setStatus('Please enter a valid number of retention days.', 'warning')
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Delete budget audit logs older than ${auditRetentionDays.value} days? This cannot be undone.`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  cleaningAuditLogs.value = true
+
+  try {
+    const result = await cleanupManagedAuditLogs(auditRetentionDays.value)
+    setStatus(`Deleted ${result.deletedCount} audit log entr${result.deletedCount === 1 ? 'y' : 'ies'} older than ${result.retentionDays} days.`)
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : 'Failed to clean audit logs.', 'warning')
+  } finally {
+    cleaningAuditLogs.value = false
   }
 }
 

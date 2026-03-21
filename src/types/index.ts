@@ -1,5 +1,6 @@
 export type TrackerRole = 'owner' | 'admin' | 'member' | 'viewer'
 export type TrackerMemberStatus = 'active' | 'invited'
+export type AuditLogAction = 'insert' | 'update' | 'delete'
 
 export interface Tracker {
   id: string
@@ -17,6 +18,19 @@ export interface TrackerMember {
   role: TrackerRole
   status: TrackerMemberStatus
   joinedAt: string
+}
+
+export interface BudgetAuditLog {
+  id: string
+  trackerId: string
+  entityType: 'trackers' | 'tracker_members' | 'expenses' | 'incomes' | 'savings'
+  recordId: string
+  action: AuditLogAction
+  actorUserId?: string | null
+  actorEmail?: string | null
+  oldData?: Record<string, unknown> | null
+  newData?: Record<string, unknown> | null
+  occurredAt: string
 }
 
 export interface Transaction {

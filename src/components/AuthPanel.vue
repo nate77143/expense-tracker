@@ -1,29 +1,10 @@
 <template>
   <div class="auth-layout">
-    <section class="auth-hero panel panel-strong">
-      <p class="eyebrow">Secure Access</p>
-      <h1 class="auth-title">Sign in to manage your finances in one place</h1>
-      <p class="auth-copy">
-        Use your email and password to access the dashboard, keep your device session active, and prepare the app for
-        private user accounts.
-      </p>
-
-      <div class="summary-grid">
-        <div class="summary-card">
-          <span class="label-muted">Login type</span>
-          <strong>Email + password</strong>
-        </div>
-        <div class="summary-card">
-          <span class="label-muted">Session storage</span>
-          <strong>Supabase Auth</strong>
-        </div>
-      </div>
-    </section>
-
-    <section class="auth-card panel">
-      <div class="panel-header">
+    <section class="auth-card panel panel-strong">
+      <div class="panel-header auth-header">
         <div>
-          <h2 class="card-title">{{ isSignUpMode ? 'Create your account' : 'Welcome back' }}</h2>
+          <p class="eyebrow">Secure Access</p>
+          <h1 class="auth-title">{{ isSignUpMode ? 'Create your account' : 'Sign in' }}</h1>
           <p class="panel-copy">
             {{ isSignUpMode ? 'Start with a secure account for this expense tracker. Please contact administrator after signing up so your account can be approved.' : 'Sign in to continue to your workspace.' }}
           </p>

@@ -69,6 +69,31 @@ const supabaseAuthRequest = async (context, path, { method = 'GET', body, access
   return payload
 }
 
+const supabaseRestRequest = async (context, path, { method = 'POST', body } = {}) => {
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
+  const baseUrl = normalizeBaseUrl(SUPABASE_URL)
+  const url = `${baseUrl}${path}`
+  const headers = {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    'Content-Type': 'application/json'
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body)
+  })
+
+  const payload = await readJson(response)
+
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(payload) ?? `Supabase REST request failed (${response.status}).`)
+  }
+
+  return payload
+}
+
 export const getCurrentUser = async (context, accessToken) =>
   supabaseAuthRequest(context, '/auth/v1/user', {
     accessToken
@@ -102,6 +127,14 @@ export const deleteUserById = async (context, userId) =>
   supabaseAuthRequest(context, `/auth/v1/admin/users/${userId}`, {
     method: 'DELETE',
     admin: true
+  })
+
+export const cleanupBudgetAuditLogs = async (context, retentionDays) =>
+  supabaseRestRequest(context, '/rest/v1/rpc/cleanup_budget_audit_logs', {
+    method: 'POST',
+    body: {
+      retention_days: retentionDays
+    }
   })
 
 export const requireAdmin = async context => {

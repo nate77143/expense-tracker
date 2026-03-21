@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { Expense, Income, Saving } from '../types'
+import type { BudgetAuditLog, Expense, Income, Saving } from '../types'
 
 type ExpenseRow = {
   id: string
@@ -28,6 +28,19 @@ type SavingRow = {
   date: string
 }
 
+type AuditLogRow = {
+  id: string
+  tracker_id: string
+  entity_type: BudgetAuditLog['entityType']
+  record_id: string
+  action: BudgetAuditLog['action']
+  actor_user_id?: string | null
+  actor_email?: string | null
+  old_data?: Record<string, unknown> | null
+  new_data?: Record<string, unknown> | null
+  occurred_at: string
+}
+
 const mapExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
@@ -53,6 +66,19 @@ const mapSaving = (row: SavingRow): Saving => ({
   amount: row.amount,
   remarks: row.remarks ?? undefined,
   date: row.date
+})
+
+const mapAuditLog = (row: AuditLogRow): BudgetAuditLog => ({
+  id: row.id,
+  trackerId: row.tracker_id,
+  entityType: row.entity_type,
+  recordId: row.record_id,
+  action: row.action,
+  actorUserId: row.actor_user_id ?? null,
+  actorEmail: row.actor_email ?? null,
+  oldData: row.old_data ?? null,
+  newData: row.new_data ?? null,
+  occurredAt: row.occurred_at
 })
 
 export async function fetchExpenses(trackerId: string) {
@@ -83,6 +109,17 @@ export async function fetchSavings(trackerId: string) {
     .order('date', { ascending: false })
 
   return { data: (data as SavingRow[] | null)?.map(mapSaving) ?? null, error }
+}
+
+export async function fetchAuditLogs(trackerId: string, limit = 20) {
+  const { data, error } = await supabase
+    .from('budget_audit_logs')
+    .select('*')
+    .eq('tracker_id', trackerId)
+    .order('occurred_at', { ascending: false })
+    .limit(limit)
+
+  return { data: (data as AuditLogRow[] | null)?.map(mapAuditLog) ?? null, error }
 }
 
 export async function insertExpense(expense: Omit<Expense, 'id'>) {

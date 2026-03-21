@@ -169,16 +169,48 @@
         </article>
       </div>
     </section>
+
+    <section class="panel" v-if="activeTracker">
+      <div class="panel-header">
+        <div>
+          <h3 class="card-title">Recent activity</h3>
+          <p class="panel-copy">Review who updated this tracker and what changed most recently.</p>
+        </div>
+        <span class="tag">{{ activityLogs.length }} event{{ activityLogs.length === 1 ? '' : 's' }}</span>
+      </div>
+
+      <div v-if="activityLogs.length === 0" class="empty-state">
+        <div class="empty-state-title">No activity yet</div>
+        <p class="empty-state-copy">Audit entries will appear here after someone changes this tracker or its records.</p>
+      </div>
+
+      <div v-else class="stack">
+        <article v-for="entry in activityLogs" :key="entry.id" class="user-row">
+          <div class="user-row-main">
+            <div class="user-row-title">{{ activityTitle(entry) }}</div>
+            <div class="user-row-copy">{{ activityCopy(entry) }}</div>
+            <div class="user-row-copy">{{ formatDateTime(entry.occurredAt) }}</div>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <span class="tag" :class="actionTone(entry.action)">{{ actionLabel(entry.action) }}</span>
+            <span class="tag">{{ entityLabel(entry.entityType) }}</span>
+          </div>
+        </article>
+      </div>
+    </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import type { Tracker, TrackerMember, TrackerRole } from '../types'
+import { formatDateTime } from '../lib/formatters'
+import type { BudgetAuditLog, Tracker, TrackerMember, TrackerRole } from '../types'
 
 const props = defineProps<{
   trackers: Tracker[]
   members: TrackerMember[]
+  activityLogs: BudgetAuditLog[]
   activeTrackerId: string
   currentUserEmail: string
 }>()
@@ -214,6 +246,8 @@ const activeMembers = computed(() => props.members.filter(member => member.track
 const currentMembership = computed(() => {
   return activeMembers.value.find(member => member.email.toLowerCase() === props.currentUserEmail.toLowerCase()) ?? null
 })
+
+const activityLogs = computed(() => props.activityLogs.filter(entry => entry.trackerId === props.activeTrackerId))
 
 const canManageMembers = computed(() => {
   return currentMembership.value?.role === 'owner' || currentMembership.value?.role === 'admin'
@@ -297,6 +331,62 @@ const canDeleteTracker = (trackerId: string) => {
   )
 
   return membership?.role === 'owner'
+}
+
+const entityLabel = (entityType: BudgetAuditLog['entityType']) => {
+  if (entityType === 'tracker_members') return 'Members'
+  if (entityType === 'trackers') return 'Tracker'
+  if (entityType === 'expenses') return 'Expenses'
+  if (entityType === 'incomes') return 'Income'
+  return 'Savings'
+}
+
+const actionLabel = (action: BudgetAuditLog['action']) => {
+  if (action === 'insert') return 'Created'
+  if (action === 'update') return 'Updated'
+  return 'Deleted'
+}
+
+const actionTone = (action: BudgetAuditLog['action']) => {
+  return action === 'delete' ? 'tag-danger' : action === 'insert' ? 'tag-success' : ''
+}
+
+const activityTitle = (entry: BudgetAuditLog) => {
+  const actor = entry.actorEmail || 'A user'
+
+  if (entry.entityType === 'tracker_members') {
+    const targetEmail =
+      String(entry.newData?.email ?? entry.oldData?.email ?? '').trim() || 'a member'
+    return `${actor} ${actionLabel(entry.action).toLowerCase()} ${targetEmail}`
+  }
+
+  if (entry.entityType === 'trackers') {
+    const trackerName =
+      String(entry.newData?.name ?? entry.oldData?.name ?? activeTracker.value?.name ?? 'this tracker').trim() || 'this tracker'
+    return `${actor} ${actionLabel(entry.action).toLowerCase()} ${trackerName}`
+  }
+
+  return `${actor} ${actionLabel(entry.action).toLowerCase()} a ${entityLabel(entry.entityType).toLowerCase()} entry`
+}
+
+const activityCopy = (entry: BudgetAuditLog) => {
+  if (entry.entityType === 'expenses') {
+    return String(entry.newData?.category ?? entry.oldData?.category ?? 'Expense change')
+  }
+
+  if (entry.entityType === 'incomes') {
+    return String(entry.newData?.source ?? entry.oldData?.source ?? 'Income change')
+  }
+
+  if (entry.entityType === 'savings') {
+    return String(entry.newData?.bank ?? entry.oldData?.bank ?? 'Savings change')
+  }
+
+  if (entry.entityType === 'tracker_members') {
+    return String(entry.newData?.role ?? entry.oldData?.role ?? 'Membership change')
+  }
+
+  return String(entry.newData?.description ?? entry.oldData?.description ?? 'Tracker details changed')
 }
 
 const handleDeleteTracker = (tracker: Tracker) => {

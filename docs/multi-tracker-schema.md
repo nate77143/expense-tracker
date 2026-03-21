@@ -145,3 +145,23 @@ Run this follow-up migration too:
 - [`supabase/migrations/20260321_fix_tracker_rls_recursion.sql`](/d:/code/expense-tracker/supabase/migrations/20260321_fix_tracker_rls_recursion.sql)
 
 It replaces those policies with security-definer helper functions so membership checks do not recurse through the same table policy.
+
+## Audit Log Retention
+
+Audit logs can grow much faster than the tracker tables themselves, so the repo now includes a cleanup helper:
+
+- [`supabase/migrations/20260321_budget_audit_retention_90_days.sql`](/d:/code/expense-tracker/supabase/migrations/20260321_budget_audit_retention_90_days.sql)
+
+After running it, you can purge old logs with:
+
+```sql
+select public.cleanup_budget_audit_logs();
+```
+
+That keeps the last 90 days by default.
+
+If you later want 60 days instead, use:
+
+```sql
+select public.cleanup_budget_audit_logs(60);
+```

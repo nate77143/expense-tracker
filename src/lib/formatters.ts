@@ -25,6 +25,17 @@ export const formatDate = (dateStr: string): string => {
   }).format(date)
 }
 
+export const formatDateTime = (dateStr: string): string => {
+  const date = new Date(dateStr)
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(date)
+}
+
 export const formatMonth = (monthStr: string): string => {
   const [year, month] = monthStr.split('-')
   const date = new Date(Number(year), Number(month) - 1)

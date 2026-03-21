@@ -66,16 +66,16 @@
             No trackers found yet. Open the Trackers page to create your first workspace.
           </div>
 
-          <div class="status-banner">
-            Signed in as {{ session.user.email ?? 'your account' }}.
-          </div>
-
           <div v-if="workspaceNotice" class="status-banner status-banner-warning">
             {{ workspaceNotice }}
           </div>
 
           <div v-if="financeNotice" class="status-banner status-banner-warning">
             {{ financeNotice }}
+          </div>
+
+          <div v-if="activityNotice" class="status-banner status-banner-warning">
+            {{ activityNotice }}
           </div>
 
           <div v-if="!hasConfiguredAdminEmails && !isAdmin" class="status-banner">
@@ -122,6 +122,7 @@
             v-else-if="currentPage === 'trackers'"
             :trackers="trackers"
             :members="trackerMembers"
+            :activity-logs="auditLogs"
             :active-tracker-id="activeTrackerId"
             :current-user-email="session.user.email ?? ''"
             @select-tracker="activeTrackerId = $event"
@@ -205,7 +206,7 @@ import SettingsPage from './views/SettingsPage.vue'
 import TrackersPage from './views/TrackersPage.vue'
 
 import { hasConfiguredAdminEmails, isAdminUser } from './lib/admin'
-import type { Expense, Income, Saving, Tracker, TrackerMember, TrackerRole } from './types'
+import type { BudgetAuditLog, Expense, Income, Saving, Tracker, TrackerMember, TrackerRole } from './types'
 import {
   getCurrentSession,
   signOutCurrentUser,
@@ -215,6 +216,7 @@ import {
   deleteExpense as deleteExpenseApi,
   deleteIncome as deleteIncomeApi,
   deleteSaving as deleteSavingApi,
+  fetchAuditLogs,
   fetchExpenses,
   fetchIncomes,
   fetchSavings,
@@ -237,6 +239,7 @@ const currentPage = ref<PageId>('dashboard')
 const session = ref<Session | null>(null)
 const trackers = ref<Tracker[]>([])
 const trackerMembers = ref<TrackerMember[]>([])
+const auditLogs = ref<BudgetAuditLog[]>([])
 const activeTrackerId = ref('')
 const expenses = ref<Expense[]>([])
 const incomes = ref<Income[]>([])
@@ -246,6 +249,7 @@ const authLoading = ref(true)
 const supabaseError = ref<string | null>(null)
 const workspaceNotice = ref<string | null>(null)
 const financeNotice = ref<string | null>(null)
+const activityNotice = ref<string | null>(null)
 const authSubscription = ref<{ unsubscribe: () => void } | null>(null)
 
 const pageDetails: Record<PageId, { heading: string; description: string }> = {
@@ -359,9 +363,11 @@ const resetLocalData = () => {
   expenses.value = []
   incomes.value = []
   savings.value = []
+  auditLogs.value = []
   supabaseError.value = null
   workspaceNotice.value = null
   financeNotice.value = null
+  activityNotice.value = null
   currentPage.value = 'dashboard'
 }
 
@@ -419,6 +425,28 @@ const loadActiveTrackerMembers = async (trackerId: string) => {
     replaceTrackerMembers(trackerId, data)
   } catch (error) {
     workspaceNotice.value = `Could not refresh tracker members from Supabase, so the app is keeping the latest local member list for now. ${getSupabaseErrorMessage(error)}`
+  }
+}
+
+const loadAuditActivity = async (trackerId: string) => {
+  if (!trackerId) {
+    auditLogs.value = []
+    return
+  }
+
+  activityNotice.value = null
+
+  try {
+    const { data, error } = await fetchAuditLogs(trackerId)
+
+    if (error) {
+      throw error
+    }
+
+    auditLogs.value = data ?? []
+  } catch (error) {
+    auditLogs.value = []
+    activityNotice.value = `Could not load tracker activity from Supabase. ${getSupabaseErrorMessage(error)}`
   }
 }
 
@@ -495,11 +523,11 @@ watch(activeTrackerId, async trackerId => {
     expenses.value = []
     incomes.value = []
     savings.value = []
+    auditLogs.value = []
     return
   }
 
-  await loadActiveTrackerMembers(trackerId)
-  await loadTrackerData(trackerId)
+  await Promise.all([loadActiveTrackerMembers(trackerId), loadTrackerData(trackerId), loadAuditActivity(trackerId)])
 })
 
 onMounted(async () => {
@@ -569,6 +597,7 @@ const handleCreateTracker = async (input: { name: string; description: string; i
     trackerMembers.value = [...trackerMembers.value, ownerMembership]
     activeTrackerId.value = tracker.id
     currentPage.value = 'dashboard'
+    await loadAuditActivity(tracker.id)
   } catch (error) {
     workspaceNotice.value = `The tracker could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -583,6 +612,7 @@ const handleAddTrackerMember = async (input: { trackerId: string; email: string;
     }
 
     trackerMembers.value = [...trackerMembers.value, data]
+    await loadAuditActivity(input.trackerId)
   } catch (error) {
     workspaceNotice.value = `The tracker member could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -597,6 +627,7 @@ const handleRemoveTrackerMember = async (memberId: string) => {
     }
 
     trackerMembers.value = trackerMembers.value.filter(member => member.id !== memberId)
+    await loadAuditActivity(activeTrackerId.value)
   } catch (error) {
     workspaceNotice.value = `The tracker member could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -631,6 +662,7 @@ const addExpense = async (expense: Expense) => {
     }
 
     expenses.value.unshift(data)
+    await loadAuditActivity(expense.trackerId)
   } catch (error) {
     supabaseError.value = `The expense could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -645,6 +677,7 @@ const deleteExpense = async (id: string) => {
     }
 
     removeLocalExpense(id)
+    await loadAuditActivity(activeTrackerId.value)
   } catch (error) {
     supabaseError.value = `The expense could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -665,6 +698,7 @@ const addIncome = async (income: Income) => {
     }
 
     incomes.value.unshift(data)
+    await loadAuditActivity(income.trackerId)
   } catch (error) {
     supabaseError.value = `The income entry could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -679,6 +713,7 @@ const deleteIncome = async (id: string) => {
     }
 
     removeLocalIncome(id)
+    await loadAuditActivity(activeTrackerId.value)
   } catch (error) {
     supabaseError.value = `The income entry could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -699,6 +734,7 @@ const addSaving = async (saving: Saving) => {
     }
 
     savings.value.unshift(data)
+    await loadAuditActivity(saving.trackerId)
   } catch (error) {
     supabaseError.value = `The savings entry could not be saved to Supabase. ${getSupabaseErrorMessage(error)}`
   }
@@ -713,6 +749,7 @@ const deleteSaving = async (id: string) => {
     }
 
     removeLocalSaving(id)
+    await loadAuditActivity(activeTrackerId.value)
   } catch (error) {
     supabaseError.value = `The savings entry could not be removed from Supabase. ${getSupabaseErrorMessage(error)}`
   }
