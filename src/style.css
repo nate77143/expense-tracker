@@ -114,6 +114,34 @@ a {
   gap: 0.85rem;
 }
 
+.topbar-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-primary);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.topbar-menu-toggle-line {
+  display: block;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.topbar-menu {
+  display: contents;
+}
+
 .brand-lockup {
   display: flex;
   align-items: center;
@@ -272,6 +300,21 @@ a {
 .card-title {
   font-family: 'Aptos Display', 'Aptos', 'Segoe UI Variable', sans-serif;
   letter-spacing: -0.03em;
+}
+
+.page-heading {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.page-title {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  line-height: 1.04;
+}
+
+.page-heading-copy {
+  color: var(--text-secondary);
+  max-width: 60ch;
 }
 
 .page-banner-title {
@@ -1001,6 +1044,14 @@ a {
   justify-content: flex-end;
 }
 
+.tracker-header-meta {
+  gap: 0.85rem;
+}
+
+.tracker-switcher {
+  min-width: min(320px, 100%);
+}
+
 .tracker-card-title {
   font-weight: 700;
   font-size: 1.05rem;
@@ -1142,12 +1193,44 @@ a {
     align-items: flex-start;
   }
 
-  .nav-pill-group,
   .account-chip,
   .workspace-strip-controls,
   .workspace-picker,
   .tracker-card-actions {
     width: 100%;
+  }
+
+  .topbar-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .topbar-menu-toggle {
+    display: inline-flex;
+  }
+
+  .topbar-menu {
+    display: none;
+    grid-column: 1 / -1;
+    gap: 0.9rem;
+    width: 100%;
+    padding-top: 0.35rem;
+  }
+
+  .topbar-menu.open {
+    display: grid;
+  }
+
+  .nav-pill-group {
+    width: 100%;
+    display: grid;
+    gap: 0.55rem;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .nav-pill {
+    min-width: 0;
   }
 
   .workspace-pill-group {

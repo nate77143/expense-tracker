@@ -11,35 +11,50 @@
         </div>
       </div>
 
-      <div class="nav-pill-group" aria-label="Primary">
-        <button
-          v-for="item in items"
-          :key="item.id"
-          class="nav-pill"
-          :class="{ active: currentPage === item.id }"
-          type="button"
-          @click="$emit('navigate', item.id)"
-        >
-          <span class="nav-pill-label">{{ item.label }}</span>
-          <small class="nav-pill-copy">{{ item.copy }}</small>
-        </button>
-      </div>
+      <button
+        type="button"
+        class="topbar-menu-toggle"
+        :aria-expanded="mobileMenuOpen ? 'true' : 'false'"
+        aria-controls="topbar-menu"
+        @click="mobileMenuOpen = !mobileMenuOpen"
+      >
+        <span class="topbar-menu-toggle-line"></span>
+        <span class="topbar-menu-toggle-line"></span>
+        <span class="topbar-menu-toggle-line"></span>
+        <span>{{ mobileMenuOpen ? 'Close' : 'Menu' }}</span>
+      </button>
 
-      <div class="account-chip">
-        <div class="account-chip-meta">
-          <div class="account-chip-label">Signed in</div>
-          <div class="account-chip-value">{{ userEmail }}</div>
+      <div id="topbar-menu" class="topbar-menu" :class="{ open: mobileMenuOpen }">
+        <div class="nav-pill-group" aria-label="Primary">
+          <button
+            v-for="item in items"
+            :key="item.id"
+            class="nav-pill"
+            :class="{ active: currentPage === item.id }"
+            type="button"
+            @click="handleNavigate(item.id)"
+          >
+            <span class="nav-pill-label">{{ item.label }}</span>
+            <small class="nav-pill-copy">{{ item.copy }}</small>
+          </button>
         </div>
-        <button type="button" class="btn btn-secondary" @click="$emit('logout')">
-          Sign out
-        </button>
+
+        <div class="account-chip">
+          <div class="account-chip-meta">
+            <div class="account-chip-label">Signed in</div>
+            <div class="account-chip-value">{{ userEmail }}</div>
+          </div>
+          <button type="button" class="btn btn-secondary" @click="handleLogout">
+            Sign out
+          </button>
+        </div>
       </div>
     </div>
   </nav>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 type PageId = 'dashboard' | 'expenses' | 'income' | 'reports' | 'savings' | 'trackers' | 'settings'
 
@@ -49,10 +64,12 @@ const props = defineProps<{
   isAdmin: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   navigate: [page: PageId]
   logout: []
 }>()
+
+const mobileMenuOpen = ref(false)
 
 const items = computed(() => {
   return [
@@ -65,4 +82,21 @@ const items = computed(() => {
     ...(props.isAdmin ? [{ id: 'settings', label: 'Settings', copy: 'Admin' }] : [])
   ] as { id: PageId; label: string; copy: string }[]
 })
+
+const handleNavigate = (page: PageId) => {
+  mobileMenuOpen.value = false
+  emit('navigate', page)
+}
+
+const handleLogout = () => {
+  mobileMenuOpen.value = false
+  emit('logout')
+}
+
+watch(
+  () => props.currentPage,
+  () => {
+    mobileMenuOpen.value = false
+  }
+)
 </script>

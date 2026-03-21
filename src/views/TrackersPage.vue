@@ -8,9 +8,22 @@
           Create separate trackers for yourself, switch between them, and share selected trackers with family members.
         </p>
       </div>
-      <div class="section-meta">
+      <div class="section-meta tracker-header-meta">
         <span class="label-muted">Active tracker</span>
         <strong>{{ activeTracker?.name ?? 'None' }}</strong>
+        <div v-if="trackers.length > 0" class="form-group tracker-switcher">
+          <label class="form-label" for="trackers-active-switch">Switch tracker</label>
+          <select
+            id="trackers-active-switch"
+            :value="activeTrackerId"
+            class="form-select"
+            @change="handleSwitchTracker"
+          >
+            <option v-for="tracker in trackers" :key="tracker.id" :value="tracker.id">
+              {{ tracker.name }}
+            </option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -331,6 +344,11 @@ const canDeleteTracker = (trackerId: string) => {
   )
 
   return membership?.role === 'owner'
+}
+
+const handleSwitchTracker = (event: Event) => {
+  const nextTrackerId = (event.target as HTMLSelectElement).value
+  emit('select-tracker', nextTrackerId)
 }
 
 const entityLabel = (entityType: BudgetAuditLog['entityType']) => {

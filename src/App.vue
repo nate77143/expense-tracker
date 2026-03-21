@@ -21,48 +21,14 @@
 
       <main class="main-content">
         <section class="page-frame">
-          <header class="page-banner">
+          <header class="page-heading">
             <div>
-              <p class="eyebrow">Personal Finance Workspace</p>
-              <h1 class="page-banner-title">{{ activePage.heading }}</h1>
-              <p class="page-banner-copy">{{ activePage.description }}</p>
-            </div>
-            <div class="page-banner-metric">
-              <span class="page-banner-label">Records loaded</span>
-              <strong>{{ totalRecords }}</strong>
+              <h1 class="page-title">{{ activePage.heading }}</h1>
+              <p class="page-heading-copy">{{ activePage.description }}</p>
             </div>
           </header>
 
-          <section v-if="trackers.length > 0" class="panel workspace-strip">
-            <div>
-              <p class="eyebrow">Active Tracker</p>
-              <h2 class="workspace-title">{{ activeTracker?.name ?? 'No tracker selected' }}</h2>
-              <p class="workspace-copy">
-                {{ activeTracker?.description || 'Choose a tracker to view the right expenses, incomes, and savings.' }}
-              </p>
-            </div>
-
-            <div class="workspace-strip-controls">
-              <div class="form-group workspace-picker">
-                <label class="form-label" for="active-tracker">Switch tracker</label>
-                <select id="active-tracker" v-model="activeTrackerId" class="form-select">
-                  <option v-for="tracker in trackers" :key="tracker.id" :value="tracker.id">
-                    {{ tracker.name }}
-                  </option>
-                </select>
-              </div>
-
-              <div class="workspace-pill-group">
-                <span class="tag">{{ currentTrackerRole ? `Role: ${currentTrackerRole}` : 'No role' }}</span>
-                <span class="tag">{{ activeTrackerMemberCount }} member{{ activeTrackerMemberCount === 1 ? '' : 's' }}</span>
-                <button type="button" class="btn btn-secondary" @click="currentPage = 'trackers'">
-                  Manage trackers
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <div v-else class="status-banner">
+          <div v-if="trackers.length === 0" class="status-banner">
             No trackers found yet. Open the Trackers page to create your first workspace.
           </div>
 
@@ -293,23 +259,6 @@ const isApproved = computed(() => {
 
 const activeTracker = computed(() => trackers.value.find(tracker => tracker.id === activeTrackerId.value) ?? null)
 
-const activeTrackerMembers = computed(() => {
-  return trackerMembers.value.filter(member => member.trackerId === activeTrackerId.value)
-})
-
-const currentTrackerRole = computed(() => {
-  const currentEmail = session.value?.user.email?.toLowerCase()
-  if (!currentEmail) {
-    return null
-  }
-
-  return (
-    activeTrackerMembers.value.find(member => member.email.toLowerCase() === currentEmail)?.role ?? null
-  )
-})
-
-const activeTrackerMemberCount = computed(() => activeTrackerMembers.value.length)
-
 const activePage = computed(() => {
   if (currentPage.value === 'settings' && !isAdmin.value) {
     return pageDetails.dashboard
@@ -317,8 +266,6 @@ const activePage = computed(() => {
 
   return pageDetails[currentPage.value]
 })
-
-const totalRecords = computed(() => expenses.value.length + incomes.value.length + savings.value.length)
 
 type SupabaseErrorLike = {
   code?: string
