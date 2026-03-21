@@ -88,45 +88,67 @@ export async function createTracker(input: {
   ownerUserId: string
   ownerEmail: string
 }) {
-  const { data: trackerRow, error: trackerError } = await supabase
+  const trackerId = crypto.randomUUID()
+  const memberId = crypto.randomUUID()
+  const createdAt = new Date().toISOString()
+  const joinedAt = createdAt
+
+  const { error: trackerError } = await supabase
     .from('trackers')
     .insert([
       {
+        id: trackerId,
         name: input.name,
         description: input.description,
-        is_personal: input.isPersonal ?? false
+        is_personal: input.isPersonal ?? false,
+        created_at: createdAt
       }
     ])
-    .select('*')
-    .single()
 
-  if (trackerError || !trackerRow) {
-    return { tracker: null, ownerMembership: null, error: trackerError ?? new Error('Failed to create tracker.') }
+  if (trackerError) {
+    return { tracker: null, ownerMembership: null, error: trackerError }
   }
 
-  const tracker = mapTracker(trackerRow as TrackerRow)
+  const tracker: Tracker = {
+    id: trackerId,
+    name: input.name,
+    description: input.description,
+    createdAt,
+    isPersonal: input.isPersonal ?? false
+  }
 
-  const { data: membershipRow, error: membershipError } = await supabase
+  const { error: membershipError } = await supabase
     .from('tracker_members')
     .insert([
       {
+        id: memberId,
         tracker_id: tracker.id,
         user_id: input.ownerUserId,
         email: input.ownerEmail.toLowerCase(),
         role: 'owner',
-        status: 'active'
+        status: 'active',
+        joined_at: joinedAt
       }
     ])
-    .select('*')
-    .single()
 
-  if (membershipError || !membershipRow) {
-    return { tracker, ownerMembership: null, error: membershipError ?? new Error('Failed to create tracker owner membership.') }
+  if (membershipError) {
+    await supabase.from('trackers').delete().eq('id', tracker.id)
+    return { tracker: null, ownerMembership: null, error: membershipError }
+  }
+
+  const ownerMembership: TrackerMember = {
+    id: memberId,
+    trackerId: tracker.id,
+    userId: input.ownerUserId,
+    email: input.ownerEmail.toLowerCase(),
+    role: 'owner',
+    status: 'active',
+    joinedAt
   }
 
   return {
     tracker,
-    ownerMembership: mapTrackerMember(membershipRow as TrackerMemberRow),
+    ownerMembership,
     error: null
   }
 }
@@ -136,20 +158,36 @@ export async function addTrackerMember(input: {
   email: string
   role: TrackerRole
 }) {
-  const { data, error } = await supabase
+  const memberId = crypto.randomUUID()
+  const joinedAt = new Date().toISOString()
+
+  const { error } = await supabase
     .from('tracker_members')
     .insert([
       {
+        id: memberId,
         tracker_id: input.trackerId,
         email: input.email.toLowerCase(),
         role: input.role,
-        status: 'active'
+        status: 'active',
+        joined_at: joinedAt
       }
     ])
-    .select('*')
-    .single()
 
-  return { data: data ? mapTrackerMember(data as TrackerMemberRow) : null, error }
+  const membership: TrackerMember = {
+    id: memberId,
+    trackerId: input.trackerId,
+    userId: null,
+    email: input.email.toLowerCase(),
+    role: input.role,
+    status: 'active',
+    joinedAt
+  }
+
+  return {
+    data: error ? null : membership,
+    error
+  }
 }
 
 export async function deleteTrackerMember(id: string) {
