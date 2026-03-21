@@ -14,6 +14,7 @@ This repo should be deployed as a Cloudflare Pages project, not through Wrangler
 - Build command: `npm run build`
 - Pages output directory: `dist`
 - Functions directory: `functions`
+- Functions runtime compatibility flag: `nodejs_compat`
 
 ## Deploy
 
@@ -28,6 +29,8 @@ Dashboard settings:
 - Build output directory: `dist`
 - Root directory: leave blank unless your repo structure changes
 - Deploy command: leave blank
+
+If your deploy log says `No build command specified. Skipping build step.`, the Pages project build command is still blank and Cloudflare will skip dependency installation before trying to bundle `functions/`.
 
 When Cloudflare Pages is connected to Git, it automatically builds and deploys after the build finishes. Adding `npx wrangler deploy` as a deploy command makes Pages try to run the Worker deploy flow, which is the wrong product path for this repo.
 
