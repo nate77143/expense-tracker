@@ -62,7 +62,7 @@ import { ref } from 'vue'
 import type { Saving } from '../types'
 
 const emit = defineEmits<{
-  submit: [saving: Omit<Saving, 'id'>]
+  submit: [saving: Omit<Saving, 'id' | 'trackerId'>]
 }>()
 
 const form = ref({

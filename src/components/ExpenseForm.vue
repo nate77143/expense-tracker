@@ -85,7 +85,7 @@ import {
 import type { Expense } from '../types'
 
 const emit = defineEmits<{
-  submit: [expense: Omit<Expense, 'id'>]
+  submit: [expense: Omit<Expense, 'id' | 'trackerId'>]
 }>()
 
 const form = ref({

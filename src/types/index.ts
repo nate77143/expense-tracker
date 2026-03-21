@@ -1,5 +1,27 @@
+export type TrackerRole = 'owner' | 'admin' | 'member' | 'viewer'
+export type TrackerMemberStatus = 'active' | 'invited'
+
+export interface Tracker {
+  id: string
+  name: string
+  description: string
+  createdAt: string
+  isPersonal?: boolean
+}
+
+export interface TrackerMember {
+  id: string
+  trackerId: string
+  userId?: string | null
+  email: string
+  role: TrackerRole
+  status: TrackerMemberStatus
+  joinedAt: string
+}
+
 export interface Transaction {
   id: string
+  trackerId: string
   date: string
   amount: number
   remarks: string
@@ -15,6 +37,7 @@ export interface Income extends Transaction {
 
 export interface Saving {
   id: string
+  trackerId: string
   bank: string
   amount: number
   remarks?: string

@@ -26,8 +26,9 @@ import SavingsForm from '../components/SavingsForm.vue'
 import SavingsList from '../components/SavingsList.vue'
 import type { Saving } from '../types'
 
-defineProps<{
+const props = defineProps<{
   savings: Saving[]
+  activeTrackerId: string
 }>()
 
 const emit = defineEmits<{
@@ -35,10 +36,11 @@ const emit = defineEmits<{
   'delete-saving': [id: string]
 }>()
 
-const handleAddSaving = (savingData: Omit<Saving, 'id'>) => {
+const handleAddSaving = (savingData: Omit<Saving, 'id' | 'trackerId'>) => {
   emit('add-saving', {
     ...savingData,
-    id: Date.now().toString()
+    id: Date.now().toString(),
+    trackerId: props.activeTrackerId
   })
 }
 </script>

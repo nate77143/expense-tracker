@@ -63,7 +63,7 @@ import { ref } from 'vue'
 import type { Income } from '../types'
 
 const emit = defineEmits<{
-  submit: [income: Omit<Income, 'id'>]
+  submit: [income: Omit<Income, 'id' | 'trackerId'>]
 }>()
 
 const form = ref({

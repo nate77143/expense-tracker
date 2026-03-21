@@ -32,8 +32,9 @@ import IncomeForm from '../components/IncomeForm.vue'
 import TransactionList from '../components/TransactionList.vue'
 import type { Income } from '../types'
 
-defineProps<{
+const props = defineProps<{
   incomes: Income[]
+  activeTrackerId: string
 }>()
 
 const emit = defineEmits<{
@@ -41,10 +42,11 @@ const emit = defineEmits<{
   'delete-income': [id: string]
 }>()
 
-const handleAddIncome = (incomeData: Omit<Income, 'id'>) => {
+const handleAddIncome = (incomeData: Omit<Income, 'id' | 'trackerId'>) => {
   emit('add-income', {
     ...incomeData,
-    id: Date.now().toString()
+    id: Date.now().toString(),
+    trackerId: props.activeTrackerId
   })
 }
 </script>

@@ -3,7 +3,7 @@
     <div class="topbar-inner">
       <div class="brand-lockup">
         <div class="brand-mark">ET</div>
-        <div>
+        <div class="brand-copy">
           <p class="brand-kicker">Money Management</p>
           <button class="brand-name" type="button" @click="$emit('navigate', 'dashboard')">
             Expense Tracker
@@ -24,26 +24,45 @@
           <small class="nav-pill-copy">{{ item.copy }}</small>
         </button>
       </div>
+
+      <div class="account-chip">
+        <div class="account-chip-meta">
+          <div class="account-chip-label">Signed in</div>
+          <div class="account-chip-value">{{ userEmail }}</div>
+        </div>
+        <button type="button" class="btn btn-secondary" @click="$emit('logout')">
+          Sign out
+        </button>
+      </div>
     </div>
   </nav>
 </template>
 
 <script setup lang="ts">
-type PageId = 'dashboard' | 'expenses' | 'income' | 'reports' | 'savings'
+import { computed } from 'vue'
 
-defineProps<{
+type PageId = 'dashboard' | 'expenses' | 'income' | 'reports' | 'savings' | 'trackers' | 'settings'
+
+const props = defineProps<{
   currentPage: PageId
+  userEmail: string
+  isAdmin: boolean
 }>()
 
 defineEmits<{
   navigate: [page: PageId]
+  logout: []
 }>()
 
-const items: { id: PageId; label: string; copy: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', copy: 'Overview' },
-  { id: 'expenses', label: 'Expenses', copy: 'Outgoing' },
-  { id: 'income', label: 'Income', copy: 'Incoming' },
-  { id: 'savings', label: 'Savings', copy: 'Accounts' },
-  { id: 'reports', label: 'Reports', copy: 'Insights' }
-]
+const items = computed(() => {
+  return [
+    { id: 'dashboard', label: 'Dashboard', copy: 'Overview' },
+    { id: 'expenses', label: 'Expenses', copy: 'Outgoing' },
+    { id: 'income', label: 'Income', copy: 'Incoming' },
+    { id: 'savings', label: 'Savings', copy: 'Accounts' },
+    { id: 'reports', label: 'Reports', copy: 'Insights' },
+    { id: 'trackers', label: 'Trackers', copy: 'Shared' },
+    ...(props.isAdmin ? [{ id: 'settings', label: 'Settings', copy: 'Admin' }] : [])
+  ] as { id: PageId; label: string; copy: string }[]
+})
 </script>

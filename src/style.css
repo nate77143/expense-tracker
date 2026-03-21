@@ -103,21 +103,27 @@ a {
 .topbar-inner {
   width: min(1280px, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 30px;
   background: rgba(244, 247, 252, 0.74);
   box-shadow: var(--shadow-sm);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(180px, 210px) minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
+  gap: 0.85rem;
 }
 
 .brand-lockup {
   display: flex;
   align-items: center;
   gap: 0.95rem;
+  min-width: 0;
+}
+
+.brand-copy {
+  display: grid;
+  gap: 0.15rem;
   min-width: 0;
 }
 
@@ -151,12 +157,14 @@ a {
   font-family: 'Aptos Display', 'Aptos', 'Segoe UI Variable', sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
+  line-height: 1.05;
   cursor: pointer;
 }
 
 .nav-pill-group {
   display: flex;
-  gap: 0.6rem;
+  min-width: 0;
+  gap: 0.5rem;
   overflow-x: auto;
   padding-bottom: 0.2rem;
   scrollbar-width: none;
@@ -167,10 +175,10 @@ a {
 }
 
 .nav-pill {
-  min-width: 118px;
-  padding: 0.75rem 0.9rem;
+  min-width: 98px;
+  padding: 0.68rem 0.8rem;
   border: 1px solid transparent;
-  border-radius: 18px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.64);
   color: var(--text-secondary);
   cursor: pointer;
@@ -195,11 +203,52 @@ a {
 
 .nav-pill-label {
   font-weight: 700;
+  font-size: 0.95rem;
 }
 
 .nav-pill-copy {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.73rem;
+}
+
+.account-chip {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.7rem;
+  padding: 0.6rem 0.65rem 0.6rem 0.8rem;
+  border-radius: 18px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-sm);
+}
+
+.account-chip-meta {
+  min-width: 0;
+}
+
+.account-chip-label {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.account-chip-value {
+  max-width: 148px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.account-chip .btn {
+  padding: 0.72rem 0.95rem;
+  border-radius: 14px;
+  white-space: nowrap;
 }
 
 .page-banner {
@@ -279,6 +328,79 @@ a {
   background: var(--warning-soft);
   border-color: rgba(185, 130, 23, 0.25);
   color: #855d11;
+}
+
+.auth-main {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.95fr;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.auth-hero,
+.auth-card {
+  min-height: 100%;
+}
+
+.auth-title {
+  font-family: 'Aptos Display', 'Aptos', 'Segoe UI Variable', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  margin-top: 0.65rem;
+}
+
+.auth-copy {
+  margin-top: 1rem;
+  color: var(--text-secondary);
+  max-width: 54ch;
+}
+
+.auth-segmented {
+  margin-bottom: 1.1rem;
+}
+
+.workspace-strip {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.workspace-title {
+  font-family: 'Aptos Display', 'Aptos', 'Segoe UI Variable', sans-serif;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  letter-spacing: -0.03em;
+  margin-top: 0.45rem;
+}
+
+.workspace-copy {
+  max-width: 56ch;
+  margin-top: 0.55rem;
+  color: var(--text-secondary);
+}
+
+.workspace-strip-controls {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: end;
+}
+
+.workspace-picker {
+  min-width: 280px;
+}
+
+.workspace-pill-group {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .page-section {
@@ -649,6 +771,13 @@ a {
   transform: translateY(-1px);
 }
 
+.btn:disabled,
+.button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, #1e4ed8, #173ea8);
   color: white;
@@ -717,6 +846,20 @@ a {
 .form-group {
   display: grid;
   gap: 0.45rem;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
 }
 
 .form-label {
@@ -812,6 +955,83 @@ a {
   font-size: 1.2rem;
 }
 
+.tracker-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.tracker-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.tracker-card.active {
+  border-color: rgba(30, 78, 216, 0.28);
+  background: linear-gradient(135deg, rgba(30, 78, 216, 0.08), rgba(255, 255, 255, 0.92));
+}
+
+.tracker-card-main {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.tracker-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tracker-card-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.tracker-card-copy {
+  color: var(--text-secondary);
+}
+
+.user-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.user-row:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.user-row-main {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.user-row-title {
+  font-weight: 700;
+}
+
+.user-row-copy {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
 .report-breakdown {
   display: grid;
   gap: 0.75rem;
@@ -868,9 +1088,9 @@ a {
 
   .topbar-inner,
   .page-banner,
-  .split-hero {
+  .split-hero,
+  .auth-layout {
     grid-template-columns: 1fr;
-    flex-direction: column;
   }
 
   .stats-grid,
@@ -901,12 +1121,27 @@ a {
 
   .section-header,
   .panel-header,
+  .workspace-strip,
   .transaction-item,
   .saving-item,
   .bank-item,
-  .report-row {
+  .report-row,
+  .user-row,
+  .tracker-card {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .nav-pill-group,
+  .account-chip,
+  .workspace-strip-controls,
+  .workspace-picker,
+  .tracker-card-actions {
+    width: 100%;
+  }
+
+  .workspace-pill-group {
+    justify-content: flex-start;
   }
 
   .panel-kpi,
@@ -925,6 +1160,14 @@ a {
   .panel,
   .card {
     border-radius: 24px;
+  }
+
+  .brand-kicker {
+    font-size: 0.68rem;
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
   }
 
   .main-content {

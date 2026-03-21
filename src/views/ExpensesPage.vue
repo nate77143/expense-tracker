@@ -26,8 +26,9 @@ import ExpenseForm from '../components/ExpenseForm.vue'
 import TransactionList from '../components/TransactionList.vue'
 import type { Expense } from '../types'
 
-defineProps<{
+const props = defineProps<{
   expenses: Expense[]
+  activeTrackerId: string
 }>()
 
 const emit = defineEmits<{
@@ -35,10 +36,11 @@ const emit = defineEmits<{
   'delete-expense': [id: string]
 }>()
 
-const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
+const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'trackerId'>) => {
   emit('add-expense', {
     ...expenseData,
-    id: Date.now().toString()
+    id: Date.now().toString(),
+    trackerId: props.activeTrackerId
   })
 }
 </script>
