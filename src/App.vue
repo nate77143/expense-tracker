@@ -65,6 +65,7 @@
           <ExpensesPage
             v-else-if="visiblePage === 'expenses'"
             :expenses="expenses"
+            :savings="savings"
             :active-tracker-id="activeTrackerId"
             @add-expense="addExpense"
             @delete-expense="deleteExpense"
@@ -615,6 +616,7 @@ const addExpense = async (expense: Expense) => {
       date: expense.date,
       category: expense.category,
       fundingSource: expense.fundingSource,
+      fundingSourceBank: expense.fundingSourceBank,
       amount: expense.amount,
       remarks: expense.remarks
     })

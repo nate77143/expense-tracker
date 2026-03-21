@@ -5,7 +5,7 @@
         <p class="eyebrow">Snapshot</p>
         <h2 class="section-title">Cash flow at a glance</h2>
         <p class="section-copy">
-          Stay on top of income, expenses, and savings with a clean view of where money is moving right now.
+          Stay on top of income, expenses, and available savings with a clean view of where money is moving right now.
         </p>
       </div>
       <div class="section-meta">
@@ -43,10 +43,10 @@
 
       <article class="panel metric-card success">
         <div>
-          <p class="metric-label">Total savings</p>
-          <strong class="metric-value">{{ formatCompactCurrency(totalSavings) }}</strong>
+          <p class="metric-label">Available savings</p>
+          <strong class="metric-value">{{ formatCompactCurrency(availableSavings) }}</strong>
         </div>
-        <p class="metric-copy">Funds set aside across all linked savings accounts and banks.</p>
+        <p class="metric-copy">Savings records minus expenses that were explicitly paid from savings.</p>
       </article>
     </div>
 
@@ -67,6 +67,16 @@
             </div>
             <span class="tag" :class="netBalance >= 0 ? 'tag-success' : 'tag-danger'">
               {{ netBalance >= 0 ? 'Healthy cash flow' : 'Review spending' }}
+            </span>
+          </div>
+
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">Paid from savings</p>
+              <strong>{{ formatCurrency(savingsFundedExpenses) }}</strong>
+            </div>
+            <span class="tag" :class="savingsFundedExpenses > 0 ? 'tag-danger' : 'tag-success'">
+              {{ savingsFundedExpenses > 0 ? 'Savings used' : 'No savings used' }}
             </span>
           </div>
 
@@ -94,11 +104,11 @@
         <div class="panel-header">
           <div>
             <h3 class="card-title">Savings by bank</h3>
-            <p class="panel-copy">A quick look at how your reserves are distributed.</p>
+            <p class="panel-copy">A quick look at how your recorded savings entries are distributed.</p>
           </div>
           <div class="panel-kpi">
-            <span>Total saved</span>
-            <strong class="amount-positive">{{ formatCurrency(totalSavings) }}</strong>
+            <span>Recorded savings</span>
+            <strong class="amount-positive">{{ formatCurrency(totalRecordedSavings) }}</strong>
           </div>
         </div>
 
@@ -178,8 +188,19 @@ const views: Array<'daily' | 'weekly' | 'monthly'> = ['daily', 'weekly', 'monthl
 
 const totalExpenses = computed(() => props.expenses.reduce((sum, expense) => sum + expense.amount, 0))
 const totalIncome = computed(() => props.incomes.reduce((sum, income) => sum + income.amount, 0))
-const netBalance = computed(() => totalIncome.value - totalExpenses.value)
-const totalSavings = computed(() => props.savings.reduce((sum, saving) => sum + saving.amount, 0))
+const incomeFundedExpenses = computed(() =>
+  props.expenses
+    .filter(expense => expense.fundingSource !== 'savings')
+    .reduce((sum, expense) => sum + expense.amount, 0)
+)
+const savingsFundedExpenses = computed(() =>
+  props.expenses
+    .filter(expense => expense.fundingSource === 'savings')
+    .reduce((sum, expense) => sum + expense.amount, 0)
+)
+const netBalance = computed(() => totalIncome.value - incomeFundedExpenses.value)
+const totalRecordedSavings = computed(() => props.savings.reduce((sum, saving) => sum + saving.amount, 0))
+const availableSavings = computed(() => totalRecordedSavings.value - savingsFundedExpenses.value)
 
 const getMonthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
@@ -192,15 +213,25 @@ const previousMonthKey = computed(() => {
 })
 
 const currentMonthSavingsTotal = computed(() => {
-  return props.savings
+  const monthlySaved = props.savings
     .filter(saving => saving.date.startsWith(currentMonthKey.value))
     .reduce((sum, saving) => sum + saving.amount, 0)
+  const monthlySavingsSpend = props.expenses
+    .filter(expense => expense.fundingSource === 'savings' && expense.date.startsWith(currentMonthKey.value))
+    .reduce((sum, expense) => sum + expense.amount, 0)
+
+  return monthlySaved - monthlySavingsSpend
 })
 
 const previousMonthSavingsTotal = computed(() => {
-  return props.savings
+  const monthlySaved = props.savings
     .filter(saving => saving.date.startsWith(previousMonthKey.value))
     .reduce((sum, saving) => sum + saving.amount, 0)
+  const monthlySavingsSpend = props.expenses
+    .filter(expense => expense.fundingSource === 'savings' && expense.date.startsWith(previousMonthKey.value))
+    .reduce((sum, expense) => sum + expense.amount, 0)
+
+  return monthlySaved - monthlySavingsSpend
 })
 
 const savingsMovementDelta = computed(() => currentMonthSavingsTotal.value - previousMonthSavingsTotal.value)
@@ -244,10 +275,10 @@ const savingsMovementTone = computed(() => {
 
 const balanceCopy = computed(() => {
   if (netBalance.value >= 0) {
-    return 'Income is currently covering spend while leaving room for savings.'
+    return 'Income is covering income-funded spending while savings stay separated.'
   }
 
-  return 'Expenses are outpacing income, so this is a good time to review priorities.'
+  return 'Income-funded spending is outpacing income, so it is a good time to review priorities.'
 })
 
 const coverageRatio = computed(() => {
@@ -255,7 +286,7 @@ const coverageRatio = computed(() => {
     return '0%'
   }
 
-  return `${Math.round((totalExpenses.value / totalIncome.value) * 100)}% of income`
+  return `${Math.round((incomeFundedExpenses.value / totalIncome.value) * 100)}% of income`
 })
 
 const bankBreakdown = computed(() => {

@@ -7,6 +7,7 @@ type ExpenseRow = {
   date: string
   category: string
   payment_source?: 'income' | 'savings' | null
+  payment_source_bank?: string | null
   amount: number
   remarks: string
 }
@@ -48,6 +49,7 @@ const mapExpense = (row: ExpenseRow): Expense => ({
   date: row.date,
   category: row.category,
   fundingSource: row.payment_source === 'savings' ? 'savings' : 'income',
+  fundingSourceBank: row.payment_source_bank ?? undefined,
   amount: row.amount,
   remarks: row.remarks
 })
@@ -133,6 +135,7 @@ export async function insertExpense(expense: Omit<Expense, 'id'>) {
         date: expense.date,
         category: expense.category,
         payment_source: expense.fundingSource,
+        payment_source_bank: expense.fundingSource === 'savings' ? expense.fundingSourceBank : null,
         amount: expense.amount,
         remarks: expense.remarks
       }

@@ -378,7 +378,7 @@ type ActivityDetail = {
 const trackedFieldsByEntity: Record<BudgetAuditLog['entityType'], string[]> = {
   trackers: ['name', 'description', 'is_personal'],
   tracker_members: ['email', 'role', 'status'],
-  expenses: ['amount', 'category', 'payment_source', 'remarks', 'date'],
+  expenses: ['amount', 'category', 'payment_source', 'payment_source_bank', 'remarks', 'date'],
   incomes: ['amount', 'source', 'remarks', 'date'],
   savings: ['amount', 'bank', 'remarks', 'date']
 }
@@ -386,6 +386,7 @@ const trackedFieldsByEntity: Record<BudgetAuditLog['entityType'], string[]> = {
 const fieldLabel = (field: string) => {
   if (field === 'is_personal') return 'Personal tracker'
   if (field === 'payment_source') return 'Paid from'
+  if (field === 'payment_source_bank') return 'Savings bank'
   if (field === 'tracker_id') return 'Tracker'
   return field
     .split('_')
@@ -529,13 +530,18 @@ const activityCopy = (entry: BudgetAuditLog) => {
     const amount = currentData.amount
     const category = String(currentData.category ?? '').trim()
     const fundingSource = String(currentData.payment_source ?? '').trim()
+    const fundingSourceBank = String(currentData.payment_source_bank ?? '').trim()
     const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
 
     if (!isEmptyAuditValue(amount) || category || date) {
       const pieces = [
         category || 'Expense',
         !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '',
-        fundingSource ? `from ${fundingSource}` : '',
+        fundingSource
+          ? fundingSourceBank && fundingSource === 'savings'
+            ? `from ${fundingSource} · ${fundingSourceBank}`
+            : `from ${fundingSource}`
+          : '',
         date ? `on ${date}` : ''
       ].filter(Boolean)
 

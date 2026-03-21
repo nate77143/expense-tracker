@@ -26,7 +26,7 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <div v-if="form.category === 'Others'" class="form-group">
         <label class="form-label" for="custom-expense-category">Add new category</label>
         <div class="input-action-row">
           <input
@@ -68,6 +68,30 @@
         <span class="field-help">Choose where this expense was funded from. New expenses default to income.</span>
       </div>
 
+      <div v-if="form.fundingSource === 'savings'" class="form-group">
+        <label class="form-label" for="expense-funding-bank">Savings bank</label>
+        <select
+          id="expense-funding-bank"
+          v-model="form.fundingSourceBank"
+          class="form-select"
+          :disabled="availableSavingsBanks.length === 0"
+        >
+          <option value="">
+            {{ availableSavingsBanks.length === 0 ? 'No savings bank available' : 'Select a savings bank' }}
+          </option>
+          <option v-for="bank in availableSavingsBanks" :key="bank" :value="bank">
+            {{ bank }}
+          </option>
+        </select>
+        <span class="field-help">
+          {{
+            availableSavingsBanks.length === 0
+              ? 'Add at least one savings record first before using savings as the payment source.'
+              : 'Choose which savings bank funded this expense.'
+          }}
+        </span>
+      </div>
+
       <div class="form-group">
         <label class="form-label" for="expense-remarks">Remarks</label>
         <textarea
@@ -84,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { EXPENSE_CATEGORIES } from '../constants/categories'
 import {
   getSavedExpenseCategories,
@@ -92,6 +116,10 @@ import {
   saveExpenseCategories
 } from '../lib/expenseCategories'
 import type { Expense } from '../types'
+
+const props = defineProps<{
+  savingsBanks?: string[]
+}>()
 
 const emit = defineEmits<{
   submit: [expense: Omit<Expense, 'id' | 'trackerId'>]
@@ -102,6 +130,7 @@ const form = ref({
   category: '',
   amount: 0,
   fundingSource: 'income' as Expense['fundingSource'],
+  fundingSourceBank: '',
   remarks: ''
 })
 
@@ -114,6 +143,7 @@ const resetForm = () => {
     category: '',
     amount: 0,
     fundingSource: 'income',
+    fundingSourceBank: '',
     remarks: ''
   }
 }
@@ -123,6 +153,7 @@ onMounted(() => {
 })
 
 const categories = computed(() => [...EXPENSE_CATEGORIES, ...customCategories.value])
+const availableSavingsBanks = computed(() => (props.savingsBanks ?? []).filter(Boolean))
 
 const categoryHelpText = computed(() => {
   if (customCategories.value.length === 0) {
@@ -159,9 +190,45 @@ const handleAddCategory = () => {
   newCategory.value = ''
 }
 
+const syncFundingSourceBank = () => {
+  if (form.value.fundingSource !== 'savings') {
+    form.value.fundingSourceBank = ''
+    return
+  }
+
+  if (availableSavingsBanks.value.length === 0) {
+    form.value.fundingSourceBank = ''
+    return
+  }
+
+  if (!availableSavingsBanks.value.includes(form.value.fundingSourceBank)) {
+    form.value.fundingSourceBank = availableSavingsBanks.value[0]
+  }
+}
+
+watch(
+  () => form.value.fundingSource,
+  () => {
+    syncFundingSourceBank()
+  }
+)
+
+watch(
+  availableSavingsBanks,
+  () => {
+    syncFundingSourceBank()
+  },
+  { immediate: true }
+)
+
 const submitForm = () => {
   if (!form.value.date || !form.value.category || !form.value.amount) {
     alert('Please fill in all required fields.')
+    return
+  }
+
+  if (form.value.fundingSource === 'savings' && !form.value.fundingSourceBank) {
+    alert('Please select which savings bank funded this expense.')
     return
   }
 
@@ -170,6 +237,7 @@ const submitForm = () => {
     category: form.value.category,
     amount: form.value.amount,
     fundingSource: form.value.fundingSource,
+    fundingSourceBank: form.value.fundingSource === 'savings' ? form.value.fundingSourceBank : undefined,
     remarks: form.value.remarks
   })
 

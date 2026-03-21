@@ -16,7 +16,7 @@
       <p class="empty-state-copy">Add a bank entry to start building your reserve summary.</p>
     </div>
 
-    <div v-else class="stack">
+    <div v-else class="stack list-scroll-shell">
       <article v-for="item in sortedItems" :key="item.id" class="saving-item">
         <div class="saving-main">
           <div class="saving-title">{{ item.bank }}</div>

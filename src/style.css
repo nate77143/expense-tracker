@@ -739,6 +739,26 @@ a {
   gap: 0.9rem;
 }
 
+.list-scroll-shell {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.list-scroll-shell::-webkit-scrollbar {
+  width: 8px;
+}
+
+.list-scroll-shell::-webkit-scrollbar-track {
+  background: rgba(20, 32, 51, 0.06);
+  border-radius: 999px;
+}
+
+.list-scroll-shell::-webkit-scrollbar-thumb {
+  background: rgba(116, 134, 166, 0.42);
+  border-radius: 999px;
+}
+
 .badge,
 .tag {
   display: inline-flex;

@@ -15,7 +15,7 @@
     </div>
 
     <div class="content-grid">
-      <ExpenseForm @submit="handleAddExpense" />
+      <ExpenseForm :savings-banks="availableSavingsBanks" @submit="handleAddExpense" />
       <TransactionList title="All expenses" :items="expenses" :show-delete="true" @delete="$emit('delete-expense', $event)" />
     </div>
   </section>
@@ -24,10 +24,12 @@
 <script setup lang="ts">
 import ExpenseForm from '../components/ExpenseForm.vue'
 import TransactionList from '../components/TransactionList.vue'
-import type { Expense } from '../types'
+import { computed } from 'vue'
+import type { Expense, Saving } from '../types'
 
 const props = defineProps<{
   expenses: Expense[]
+  savings: Saving[]
   activeTrackerId: string
 }>()
 
@@ -35,6 +37,11 @@ const emit = defineEmits<{
   'add-expense': [expense: Expense]
   'delete-expense': [id: string]
 }>()
+
+const availableSavingsBanks = computed(() => {
+  const banks = props.savings.map(item => item.bank.trim()).filter(Boolean)
+  return [...new Set(banks)].sort((a, b) => a.localeCompare(b))
+})
 
 const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'trackerId'>) => {
   emit('add-expense', {

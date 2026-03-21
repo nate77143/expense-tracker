@@ -18,7 +18,7 @@
       <p class="empty-state-copy">Entries will appear here once you start tracking activity.</p>
     </div>
 
-    <div v-else class="stack">
+    <div v-else class="stack list-scroll-shell">
       <article v-for="item in sortedItems" :key="item.id" class="transaction-item">
         <div class="transaction-main">
           <div class="transaction-title">{{ itemLabel(item) }}</div>
@@ -27,7 +27,14 @@
             {{ itemLabel(item) }}
           </span>
           <div v-if="!isIncome && 'fundingSource' in item" class="transaction-meta">
-            Paid from {{ item.fundingSource === 'savings' ? 'savings' : 'income' }}
+            Paid from
+            {{
+              item.fundingSource === 'savings'
+                ? item.fundingSourceBank
+                  ? `savings · ${item.fundingSourceBank}`
+                  : 'savings'
+                : 'income'
+            }}
           </div>
           <div v-if="item.remarks" class="transaction-meta">{{ item.remarks }}</div>
         </div>

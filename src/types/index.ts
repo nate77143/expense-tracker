@@ -45,6 +45,7 @@ export interface Transaction {
 export interface Expense extends Transaction {
   category: string
   fundingSource: ExpenseFundingSource
+  fundingSourceBank?: string
 }
 
 export interface Income extends Transaction {
