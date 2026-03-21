@@ -66,11 +66,13 @@ export async function onRequest(context) {
       )
     }
 
-    if (!data?.user) {
+    const updatedUser = data?.user ?? data ?? null
+
+    if (!updatedUser) {
       return jsonResponse({ error: 'Failed to update user approval.' }, 500)
     }
 
-    return jsonResponse({ user: mapManagedUser(data.user, adminEmails) })
+    return jsonResponse({ user: mapManagedUser(updatedUser, adminEmails) })
   }
 
   if (action === 'remove') {
@@ -121,11 +123,13 @@ export async function onRequest(context) {
       return jsonResponse({ error: error instanceof Error ? error.message : 'Failed to create user.' }, 500)
     }
 
-    if (!data?.user) {
+    const createdUser = data?.user ?? data ?? null
+
+    if (!createdUser) {
       return jsonResponse({ error: 'Failed to create user.' }, 500)
     }
 
-    return jsonResponse({ user: mapManagedUser(data.user, adminEmails) }, 201)
+    return jsonResponse({ user: mapManagedUser(createdUser, adminEmails) }, 201)
   }
 
   return jsonResponse({ error: 'Unsupported admin action.' }, 400)
