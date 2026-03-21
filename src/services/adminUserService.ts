@@ -65,7 +65,10 @@ export const fetchManagedUsers = async () => {
 export const createManagedUser = async (input: { email: string; password: string; isAdmin: boolean }) => {
   const payload = await requestAdminApi('/api/admin/users', {
     method: 'POST',
-    body: JSON.stringify(input)
+    body: JSON.stringify({
+      action: 'create',
+      ...input
+    })
   })
 
   if (!payload || typeof payload !== 'object' || !('user' in payload)) {
@@ -76,16 +79,23 @@ export const createManagedUser = async (input: { email: string; password: string
 }
 
 export const deleteManagedUser = async (id: string) => {
-  await requestAdminApi('/api/admin/user-remove', {
+  await requestAdminApi('/api/admin/users', {
     method: 'POST',
-    body: JSON.stringify({ id })
+    body: JSON.stringify({
+      action: 'remove',
+      id
+    })
   })
 }
 
 export const updateManagedUserApproval = async (id: string, approved: boolean) => {
-  const payload = await requestAdminApi('/api/admin/user-approval', {
+  const payload = await requestAdminApi('/api/admin/users', {
     method: 'POST',
-    body: JSON.stringify({ id, approved })
+    body: JSON.stringify({
+      action: 'approval',
+      id,
+      approved
+    })
   })
 
   if (!payload || typeof payload !== 'object' || !('user' in payload)) {
