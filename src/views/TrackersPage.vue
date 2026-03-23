@@ -245,12 +245,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { formatCurrency, formatDate, formatDateTime } from '../lib/formatters'
-import type { BudgetAuditLog, Tracker, TrackerMember, TrackerRole } from '../types'
+import type { Account, BudgetAuditLog, Tracker, TrackerMember, TrackerRole } from '../types'
 
 const props = defineProps<{
   trackers: Tracker[]
   members: TrackerMember[]
   activityLogs: BudgetAuditLog[]
+  accounts: Account[]
   activeTrackerId: string
   currentUserId: string
   currentUserName: string
@@ -456,6 +457,14 @@ const fieldLabel = (field: string) => {
   return specialLabels[field] ?? field.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
 }
 
+const accountLabel = (accountId: unknown) => {
+  const id = String(accountId ?? '').trim()
+  if (!id) return ''
+
+  const account = props.accounts.find(item => item.id === id)
+  return account ? account.name : id
+}
+
 const isEmptyAuditValue = (value: unknown) => value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
 const areAuditValuesEqual = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right)
 
@@ -469,6 +478,10 @@ const formatAuditValue = (field: string, value: unknown) => {
 
   if ((field === 'date' || field === 'next_run_date') && typeof value === 'string') {
     return formatDate(value)
+  }
+
+  if (field === 'to_account_id' || field === 'from_account_id' || field === 'account_id') {
+    return accountLabel(value) || 'empty'
   }
 
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
@@ -554,30 +567,30 @@ const summarizeKnownEntity = (entry: BudgetAuditLog) => {
   if (entry.entityType === 'expenses') {
     const amount = currentData.amount
     const category = String(currentData.category ?? '').trim()
-    const fromAccount = String(currentData.from_account_id ?? '').trim()
+    const fromAccount = accountLabel(currentData.from_account_id)
     const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
-    return [category || 'Expense', !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '', fromAccount ? `from account ${fromAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' ， ')
+    return [category || 'Expense', !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '', fromAccount ? `from account ${fromAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' - ')
   }
 
   if (entry.entityType === 'incomes') {
     const amount = currentData.amount
     const source = String(currentData.source ?? '').trim()
-    const toAccount = String(currentData.to_account_id ?? '').trim()
+    const toAccount = accountLabel(currentData.to_account_id)
     const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
-    return [source || 'Income', !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '', toAccount ? `to account ${toAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' ， ')
+    return [source || 'Income', !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '', toAccount ? `to account ${toAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' - ')
   }
 
   if (entry.entityType === 'transfers') {
     const amount = currentData.amount
-    const fromAccount = String(currentData.from_account_id ?? '').trim()
-    const toAccount = String(currentData.to_account_id ?? '').trim()
+    const fromAccount = accountLabel(currentData.from_account_id)
+    const toAccount = accountLabel(currentData.to_account_id)
     const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
-    return [!isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : 'Transfer', fromAccount ? `from ${fromAccount}` : '', toAccount ? `to ${toAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' ， ')
+    return [!isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : 'Transfer', fromAccount ? `from ${fromAccount}` : '', toAccount ? `to ${toAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' - ')
   }
 
   if (entry.entityType === 'account_adjustments') {
     const amount = currentData.amount
-    const accountId = String(currentData.account_id ?? '').trim()
+    const accountId = accountLabel(currentData.account_id)
     const reason = String(currentData.reason ?? '').trim().replace(/_/g, ' ')
     return [!isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : 'Adjustment', accountId ? `for account ${accountId}` : '', reason ? `(${reason})` : ''].filter(Boolean).join(' ')
   }
@@ -586,7 +599,7 @@ const summarizeKnownEntity = (entry: BudgetAuditLog) => {
     const name = String(currentData.name ?? '').trim()
     const issuer = String(currentData.issuer ?? '').trim()
     const limit = currentData.limit_amount
-    return [name || 'Credit card', issuer ? `issued by ${issuer}` : '', !isEmptyAuditValue(limit) ? `limit ${formatAuditValue('limit_amount', limit)}` : ''].filter(Boolean).join(' ， ')
+    return [name || 'Credit card', issuer ? `issued by ${issuer}` : '', !isEmptyAuditValue(limit) ? `limit ${formatAuditValue('limit_amount', limit)}` : ''].filter(Boolean).join(' - ')
   }
 
   if (entry.entityType === 'recurring_rules' || entry.entityType === 'recurring_transactions') {

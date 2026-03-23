@@ -120,12 +120,20 @@
             @delete-recurring-rule="deleteRecurringRuleEntry"
             @run-due-recurring="runRecurringRulesNow"
           />
-          <ReportsPage v-else-if="visiblePage === 'reports'" :expenses="expenses" :accounts="accounts" />
+          <ReportsPage
+            v-else-if="visiblePage === 'reports'"
+            :incomes="incomes"
+            :expenses="expenses"
+            :transfers="transfers"
+            :accounts="accounts"
+            :account-adjustments="accountAdjustments"
+          />
           <TrackersPage
             v-else-if="visiblePage === 'trackers'"
             :trackers="trackers"
             :members="trackerMembers"
             :activity-logs="auditLogs"
+            :accounts="accounts"
             :active-tracker-id="activeTrackerId"
             :current-user-id="session.user.id"
             :current-user-name="currentUserDisplayName"
@@ -262,7 +270,7 @@ const pageDetails: Record<PageId, { heading: string; description: string }> = {
   transfers: { heading: 'Transfers', description: 'Move money between accounts for withdrawals, savings moves, top-ups, and card payments.' },
   cards: { heading: 'Credit cards', description: 'Manage card metadata while balances flow through linked liability accounts.' },
   recurring: { heading: 'Recurring rules', description: 'Automate repeating account-based income, expenses, and transfers.' },
-  reports: { heading: 'Performance reports', description: 'Review spending trends by category and by funding account.' },
+  reports: { heading: 'Performance reports', description: 'Review income, expenses, transfers, and balance trends across your accounts.' },
   trackers: { heading: 'Tracker workspaces', description: 'Create separate trackers for yourself and shared groups, then switch between them safely.' },
   settings: { heading: 'Admin settings', description: 'Manage administrative controls and user access for this expense tracker deployment.' }
 }
