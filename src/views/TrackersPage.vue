@@ -187,7 +187,7 @@
       <div class="panel-header">
         <div>
           <h3 class="card-title">Recent activity</h3>
-          <p class="panel-copy">Review who updated this tracker and what changed most recently.</p>
+          <p class="panel-copy">Review who updated this tracker and what changed most recently. Newest activity appears first.</p>
         </div>
         <div class="tracker-activity-header">
           <div class="tracker-activity-filters">
@@ -229,7 +229,7 @@
           <div class="user-row-main">
             <div class="user-row-title">{{ activityTitle(entry) }}</div>
             <div class="user-row-copy">{{ activityCopy(entry) }}</div>
-            <div class="user-row-copy">{{ formatDateTime(entry.occurredAt) }}</div>
+            <div class="user-row-copy">Logged at {{ formatDateTime(entry.occurredAt) }}</div>
           </div>
 
           <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
@@ -336,12 +336,15 @@ const currentMembership = computed(() => activeMembers.value.find(member => memb
 const canManageMembers = computed(() => currentMembership.value?.role === 'owner' || currentMembership.value?.role === 'admin')
 const activityLogs = computed(() => props.activityLogs.filter(entry => entry.trackerId === props.activeTrackerId))
 const filteredActivityLogs = computed(() =>
-  activityLogs.value.filter(entry => {
-    const activityDate = entry.occurredAt.slice(0, 10)
-    if (activityDateFrom.value && activityDate < activityDateFrom.value) return false
-    if (activityDateTo.value && activityDate > activityDateTo.value) return false
-    return true
-  })
+  activityLogs.value
+    .filter(entry => {
+      const activityDate = entry.occurredAt.slice(0, 10)
+      if (activityDateFrom.value && activityDate < activityDateFrom.value) return false
+      if (activityDateTo.value && activityDate > activityDateTo.value) return false
+      return true
+    })
+    .slice()
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt) || right.id.localeCompare(left.id))
 )
 
 const memberCount = (trackerId: string) => props.members.filter(member => member.trackerId === trackerId).length

@@ -40,13 +40,16 @@ const chartOptions = computed(() => ({
     type: 'line',
     toolbar: { show: false },
     zoom: { enabled: false },
+    parentHeightOffset: 0,
+    redrawOnParentResize: true,
+    redrawOnWindowResize: true,
     foreColor: '#52617a',
     fontFamily: 'Aptos, Segoe UI Variable, Segoe UI, sans-serif'
   },
   colors: ['#1e4ed8'],
   dataLabels: { enabled: false },
   stroke: {
-    curve: 'smooth',
+    curve: 'straight',
     width: 4
   },
   grid: {
@@ -54,8 +57,8 @@ const chartOptions = computed(() => ({
     strokeDashArray: 4
   },
   markers: {
-    size: 5,
-    hover: { size: 7 }
+    size: 6,
+    hover: { size: 8 }
   },
   fill: {
     type: 'gradient',
@@ -69,7 +72,8 @@ const chartOptions = computed(() => ({
   xaxis: {
     categories: props.points.map(point => point.label),
     axisBorder: { show: false },
-    axisTicks: { show: false }
+    axisTicks: { show: false },
+    tooltip: { enabled: false }
   },
   yaxis: {
     labels: {
@@ -78,6 +82,8 @@ const chartOptions = computed(() => ({
   },
   tooltip: {
     theme: 'light',
+    shared: false,
+    intersect: true,
     y: {
       formatter: (value: number) => formatCurrency(value)
     }

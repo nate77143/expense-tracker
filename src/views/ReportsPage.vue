@@ -75,7 +75,27 @@
         </div>
       </section>
 
-      <CategoryChart :title="`Expenses by Category (${capitalize(activeView)})`" :items="filteredExpenses" />
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="card-title">Balance trend</h3>
+            <p class="panel-copy">Track how net position, cash on hand, and liabilities changed over recent months.</p>
+          </div>
+          <div class="panel-kpi">
+            <span>Current net</span>
+            <strong :class="latestBalanceSnapshot.netPosition >= 0 ? 'amount-positive' : 'amount-negative'">{{ formatCurrency(latestBalanceSnapshot.netPosition) }}</strong>
+          </div>
+        </div>
+
+        <div v-if="balanceTrendPoints.length === 0" class="empty-state">
+          <div class="empty-state-title">No balance trend yet</div>
+          <p class="empty-state-copy">Balances will start charting once account activity is recorded.</p>
+        </div>
+
+        <div v-else class="chart-frame">
+          <apexchart type="line" :options="balanceTrendChartOptions" :series="balanceTrendChartSeries" height="320"></apexchart>
+        </div>
+      </section>
     </div>
 
     <div class="content-grid">
@@ -195,27 +215,7 @@
     </div>
 
     <div class="content-grid">
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h3 class="card-title">Balance trend</h3>
-            <p class="panel-copy">Track how net position, cash on hand, and liabilities changed over recent months.</p>
-          </div>
-          <div class="panel-kpi">
-            <span>Current net</span>
-            <strong :class="latestBalanceSnapshot.netPosition >= 0 ? 'amount-positive' : 'amount-negative'">{{ formatCurrency(latestBalanceSnapshot.netPosition) }}</strong>
-          </div>
-        </div>
-
-        <div v-if="balanceTrendPoints.length === 0" class="empty-state">
-          <div class="empty-state-title">No balance trend yet</div>
-          <p class="empty-state-copy">Balances will start charting once account activity is recorded.</p>
-        </div>
-
-        <div v-else class="chart-frame">
-          <apexchart type="line" :options="balanceTrendChartOptions" :series="balanceTrendChartSeries" height="320"></apexchart>
-        </div>
-      </section>
+      <CategoryChart :title="`Expenses by Category (${capitalize(activeView)})`" :items="filteredExpenses" />
 
       <section class="panel">
         <div class="panel-header">
@@ -532,6 +532,9 @@ const cashFlowChartOptions = computed(() => ({
     stacked: false,
     toolbar: { show: false },
     zoom: { enabled: false },
+    parentHeightOffset: 0,
+    redrawOnParentResize: true,
+    redrawOnWindowResize: true,
     foreColor: '#52617a',
     fontFamily: 'Aptos, Segoe UI Variable, Segoe UI, sans-serif'
   },
@@ -554,7 +557,8 @@ const cashFlowChartOptions = computed(() => ({
   xaxis: {
     categories: cashFlowTrendPoints.value.map(point => point.label),
     axisBorder: { show: false },
-    axisTicks: { show: false }
+    axisTicks: { show: false },
+    tooltip: { enabled: false }
   },
   yaxis: {
     labels: {
@@ -598,13 +602,16 @@ const balanceTrendChartOptions = computed(() => ({
     type: 'line',
     toolbar: { show: false },
     zoom: { enabled: false },
+    parentHeightOffset: 0,
+    redrawOnParentResize: true,
+    redrawOnWindowResize: true,
     foreColor: '#52617a',
     fontFamily: 'Aptos, Segoe UI Variable, Segoe UI, sans-serif'
   },
   colors: ['#1e4ed8', '#15803d', '#b45309'],
   dataLabels: { enabled: false },
   stroke: {
-    curve: 'smooth',
+    curve: 'straight',
     width: 4
   },
   grid: {
@@ -612,13 +619,14 @@ const balanceTrendChartOptions = computed(() => ({
     strokeDashArray: 4
   },
   markers: {
-    size: 4,
-    hover: { size: 6 }
+    size: 6,
+    hover: { size: 8 }
   },
   xaxis: {
     categories: balanceTrendPoints.value.map(point => point.label),
     axisBorder: { show: false },
-    axisTicks: { show: false }
+    axisTicks: { show: false },
+    tooltip: { enabled: false }
   },
   yaxis: {
     labels: {
@@ -627,8 +635,8 @@ const balanceTrendChartOptions = computed(() => ({
   },
   tooltip: {
     theme: 'light',
-    shared: true,
-    intersect: false,
+    shared: false,
+    intersect: true,
     y: {
       formatter: (value: number) => formatCurrency(value)
     }

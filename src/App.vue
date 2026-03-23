@@ -49,6 +49,7 @@
             :transfers="transfers"
             :account-adjustments="accountAdjustments"
             :credit-cards="creditCards"
+            :activity-logs="auditLogs"
           />
           <ExpensesPage
             v-else-if="visiblePage === 'expenses'"

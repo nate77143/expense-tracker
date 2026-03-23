@@ -133,7 +133,7 @@
           <article v-for="item in recentActivity" :key="item.id" class="transaction-item">
             <div class="transaction-main">
               <div class="transaction-title">{{ item.title }}</div>
-              <div class="transaction-meta">{{ formatDate(item.date) }} · {{ item.subtitle }}</div>
+              <div class="transaction-meta">{{ formatDateTime(item.occurredAt) }} · {{ item.subtitle }}</div>
             </div>
             <strong
               class="transaction-amount"
@@ -182,8 +182,8 @@ import { computed, ref } from 'vue'
 import CategoryChart from '../components/CategoryChart.vue'
 import ExpenseTrendChart from '../components/ExpenseTrendChart.vue'
 import { getAssetTotal, getDisplayBalance, getLiabilityTotal, getNetPosition, sortAccountsForDisplay } from '../lib/accountBalances'
-import { formatCompactCurrency, formatCurrency, formatDate } from '../lib/formatters'
-import type { Account, CreditCard, Expense, Income, Transfer, AccountAdjustment } from '../types'
+import { formatCompactCurrency, formatCurrency, formatDateTime } from '../lib/formatters'
+import type { Account, CreditCard, Expense, Income, Transfer, AccountAdjustment, BudgetAuditLog } from '../types'
 
 const props = defineProps<{
   accounts: Account[]
@@ -193,6 +193,7 @@ const props = defineProps<{
   transfers: Transfer[]
   accountAdjustments: AccountAdjustment[]
   creditCards: CreditCard[]
+  activityLogs: BudgetAuditLog[]
 }>()
 
 const dashboardActiveView = ref<'daily' | 'weekly' | 'monthly'>('monthly')
@@ -230,34 +231,65 @@ const accountName = (accountId: string) => props.accounts.find(account => accoun
 const displayBalance = (account: Account) => getDisplayBalance(account, props.accountBalances[account.id] ?? 0)
 const initials = (value: string) => value.split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() ?? '').join('')
 
+const auditAccountName = (value: unknown) => {
+  const accountId = String(value ?? '').trim()
+  if (!accountId) return ''
+  return accountName(accountId)
+}
+
 const recentActivity = computed(() => {
-  return [
-    ...props.incomes.map(income => ({
-      id: `income-${income.id}`,
-      date: income.date,
-      amount: income.amount,
-      tone: 'positive' as const,
-      title: income.source?.trim() || 'Income',
-      subtitle: `To ${accountName(income.toAccountId)}`
-    })),
-    ...props.expenses.map(expense => ({
-      id: `expense-${expense.id}`,
-      date: expense.date,
-      amount: -expense.amount,
-      tone: 'negative' as const,
-      title: expense.category,
-      subtitle: `From ${accountName(expense.fromAccountId)}`
-    })),
-    ...props.transfers.map(transfer => ({
-      id: `transfer-${transfer.id}`,
-      date: transfer.date,
-      amount: transfer.amount,
-      tone: 'neutral' as const,
-      title: `${accountName(transfer.fromAccountId)} -> ${accountName(transfer.toAccountId)}`,
-      subtitle: transfer.transferType.replace(/_/g, ' ')
-    }))
-  ]
-    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+  return props.activityLogs
+    .filter(entry => ['incomes', 'expenses', 'transfers', 'account_adjustments'].includes(entry.entityType))
+    .map(entry => {
+      const currentData = entry.newData ?? entry.oldData ?? {}
+
+      if (entry.entityType === 'incomes') {
+        const amount = Number(currentData.amount ?? 0)
+        return {
+          id: entry.id,
+          occurredAt: entry.occurredAt,
+          amount,
+          tone: 'positive' as const,
+          title: String(currentData.source ?? '').trim() || 'Income',
+          subtitle: `To ${auditAccountName(currentData.to_account_id) || 'Unknown account'}`
+        }
+      }
+
+      if (entry.entityType === 'expenses') {
+        const amount = Number(currentData.amount ?? 0)
+        return {
+          id: entry.id,
+          occurredAt: entry.occurredAt,
+          amount: -Math.abs(amount),
+          tone: 'negative' as const,
+          title: String(currentData.category ?? '').trim() || 'Expense',
+          subtitle: `From ${auditAccountName(currentData.from_account_id) || 'Unknown account'}`
+        }
+      }
+
+      if (entry.entityType === 'transfers') {
+        const amount = Number(currentData.amount ?? 0)
+        return {
+          id: entry.id,
+          occurredAt: entry.occurredAt,
+          amount,
+          tone: 'neutral' as const,
+          title: `${auditAccountName(currentData.from_account_id) || 'Unknown account'} -> ${auditAccountName(currentData.to_account_id) || 'Unknown account'}`,
+          subtitle: String(currentData.transfer_type ?? 'transfer').replace(/_/g, ' ')
+        }
+      }
+
+      const amount = Number(currentData.amount ?? 0)
+      return {
+        id: entry.id,
+        occurredAt: entry.occurredAt,
+        amount,
+        tone: amount >= 0 ? ('positive' as const) : ('negative' as const),
+        title: String(currentData.reason ?? 'Adjustment').replace(/_/g, ' '),
+        subtitle: `For ${auditAccountName(currentData.account_id) || 'Unknown account'}`
+      }
+    })
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt) || b.id.localeCompare(a.id))
     .slice(0, 10)
 })
 
