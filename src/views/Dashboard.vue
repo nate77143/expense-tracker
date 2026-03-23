@@ -49,8 +49,8 @@
     <div class="content-grid">
       <section class="panel panel-strong hero-card">
         <p class="eyebrow">Flow</p>
-        <h2 class="section-title">Money is finally tied to real locations</h2>
-        <p>Income raises destination accounts, expenses reduce source accounts, and transfers explain how money moved between them.</p>
+        <h2 class="section-title">See where your money is</h2>
+        <p>Income adds money to an account, expenses take money out, and transfers show how money moves between accounts.</p>
 
         <div class="hero-list">
           <div class="hero-list-item">
