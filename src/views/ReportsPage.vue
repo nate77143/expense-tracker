@@ -99,119 +99,55 @@
     </div>
 
     <div class="content-grid">
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h3 class="card-title">Income by source</h3>
-            <p class="panel-copy">Which income streams contributed the most in the selected period.</p>
-          </div>
-          <div class="panel-kpi">
-            <span>Sources</span>
-            <strong class="amount-positive">{{ incomeSourceBreakdown.length }}</strong>
-          </div>
-        </div>
+      <BreakdownDonutChart
+        title="Income by source"
+        copy="Which income streams contributed the most in the selected period."
+        :items="incomeSourceBreakdown"
+        kpi-label="Income"
+        empty-title="No income in this period"
+        empty-copy="Income sources will appear here once records are added."
+        tone="positive"
+        singular-label="entry"
+        plural-label="entries"
+      />
 
-        <div v-if="incomeSourceBreakdown.length === 0" class="empty-state">
-          <div class="empty-state-title">No income in this period</div>
-          <p class="empty-state-copy">Income sources will appear here once records are added.</p>
-        </div>
-
-        <div v-else class="stack">
-          <article v-for="item in incomeSourceBreakdown" :key="item.name" class="report-row">
-            <div>
-              <div class="report-row-title">{{ item.name }}</div>
-              <div class="report-row-copy">{{ item.entries }} entr{{ item.entries === 1 ? 'y' : 'ies' }}</div>
-            </div>
-            <strong class="amount-positive">{{ formatCurrency(item.total) }}</strong>
-          </article>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h3 class="card-title">Income by destination account</h3>
-            <p class="panel-copy">See which accounts actually received the period's income.</p>
-          </div>
-          <div class="panel-kpi">
-            <span>Accounts</span>
-            <strong class="amount-positive">{{ incomeDestinationBreakdown.length }}</strong>
-          </div>
-        </div>
-
-        <div v-if="incomeDestinationBreakdown.length === 0" class="empty-state">
-          <div class="empty-state-title">No destination data yet</div>
-          <p class="empty-state-copy">Income destination accounts will appear here after income is recorded.</p>
-        </div>
-
-        <div v-else class="stack">
-          <article v-for="item in incomeDestinationBreakdown" :key="item.name" class="report-row">
-            <div>
-              <div class="report-row-title">{{ item.name }}</div>
-              <div class="report-row-copy">{{ item.entries }} deposit{{ item.entries === 1 ? '' : 's' }}</div>
-            </div>
-            <strong class="amount-positive">{{ formatCurrency(item.total) }}</strong>
-          </article>
-        </div>
-      </section>
+      <BreakdownDonutChart
+        title="Income by destination account"
+        copy="See which accounts actually received the period's income."
+        :items="incomeDestinationBreakdown"
+        kpi-label="Received"
+        empty-title="No destination data yet"
+        empty-copy="Income destination accounts will appear here after income is recorded."
+        tone="positive"
+        singular-label="deposit"
+        plural-label="deposits"
+      />
     </div>
 
     <div class="content-grid">
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h3 class="card-title">Expenses by source account</h3>
-            <p class="panel-copy">Spot which accounts funded the most spending in the selected period.</p>
-          </div>
-          <div class="panel-kpi">
-            <span>Accounts</span>
-            <strong class="amount-negative">{{ expenseAccountBreakdown.length }}</strong>
-          </div>
-        </div>
+      <BreakdownDonutChart
+        title="Expenses by source account"
+        copy="Spot which accounts funded the most spending in the selected period."
+        :items="expenseAccountBreakdown"
+        kpi-label="Spent"
+        empty-title="No expense account data yet"
+        empty-copy="Expenses in the selected period will be grouped here."
+        tone="negative"
+        singular-label="entry"
+        plural-label="entries"
+      />
 
-        <div v-if="expenseAccountBreakdown.length === 0" class="empty-state">
-          <div class="empty-state-title">No expense account data yet</div>
-          <p class="empty-state-copy">Expenses in the selected period will be grouped here.</p>
-        </div>
-
-        <div v-else class="stack">
-          <article v-for="item in expenseAccountBreakdown" :key="item.name" class="report-row">
-            <div>
-              <div class="report-row-title">{{ item.name }}</div>
-              <div class="report-row-copy">{{ item.entries }} entr{{ item.entries === 1 ? 'y' : 'ies' }}</div>
-            </div>
-            <strong class="amount-negative">{{ formatCurrency(item.total) }}</strong>
-          </article>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h3 class="card-title">Transfers by route</h3>
-            <p class="panel-copy">See the largest internal money movements between accounts.</p>
-          </div>
-          <div class="panel-kpi">
-            <span>Moves</span>
-            <strong>{{ filteredTransfers.length }}</strong>
-          </div>
-        </div>
-
-        <div v-if="transferRouteBreakdown.length === 0" class="empty-state">
-          <div class="empty-state-title">No transfers in this period</div>
-          <p class="empty-state-copy">Withdrawals, top-ups, savings moves, and card payments will appear here.</p>
-        </div>
-
-        <div v-else class="stack">
-          <article v-for="item in transferRouteBreakdown" :key="item.name" class="report-row">
-            <div>
-              <div class="report-row-title">{{ item.name }}</div>
-              <div class="report-row-copy">{{ item.entries }} movement{{ item.entries === 1 ? '' : 's' }}</div>
-            </div>
-            <strong>{{ formatCurrency(item.total) }}</strong>
-          </article>
-        </div>
-      </section>
+      <BreakdownDonutChart
+        title="Transfers by route"
+        copy="See the largest internal money movements between accounts."
+        :items="transferRouteBreakdown"
+        kpi-label="Moved"
+        empty-title="No transfers in this period"
+        empty-copy="Withdrawals, top-ups, savings moves, and card payments will appear here."
+        tone="neutral"
+        singular-label="movement"
+        plural-label="movements"
+      />
     </div>
 
     <div class="content-grid">
@@ -248,6 +184,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import BreakdownDonutChart from '../components/BreakdownDonutChart.vue'
 import CategoryChart from '../components/CategoryChart.vue'
 import { formatCompactCurrency, formatCurrency, formatDate, formatMonth } from '../lib/formatters'
 import type { Account, AccountAdjustment, Expense, Income, Transfer } from '../types'

@@ -785,6 +785,13 @@ a {
   gap: 0.9rem;
 }
 
+.balance-visual-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.95fr) minmax(0, 1.05fr);
+  gap: 1rem;
+  align-items: center;
+}
+
 .bank-item {
   display: flex;
   align-items: center;
@@ -1522,6 +1529,10 @@ a {
   .stats-grid,
   .analytics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .balance-visual-grid {
+    grid-template-columns: 1fr;
   }
 }
 

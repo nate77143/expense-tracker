@@ -91,25 +91,31 @@
         <div class="panel-header">
           <div>
             <h3 class="card-title">Top account balances</h3>
-            <p class="panel-copy">The largest balances in the tracker, ordered across assets and liabilities.</p>
+            <p class="panel-copy">A quick visual of the largest account balances across the tracker.</p>
           </div>
         </div>
 
-        <div v-if="sortedAccounts.length === 0" class="empty-state">
+        <div v-if="topBalanceAccounts.length === 0" class="empty-state">
           <div class="empty-state-title">No accounts yet</div>
           <p class="empty-state-copy">Create accounts to see balance distribution here.</p>
         </div>
 
-        <div v-else class="bank-list">
-          <div v-for="account in sortedAccounts.slice(0, 6)" :key="account.id" class="bank-item">
-            <div style="display: flex; gap: 0.9rem; align-items: center;">
-              <div class="bank-mark">{{ initials(account.name) }}</div>
-              <div>
-                <div class="bank-name">{{ account.name }}</div>
-                <div class="bank-copy">{{ account.accountType.replace(/_/g, ' ') }}</div>
+        <div v-else class="balance-visual-grid">
+          <div class="chart-frame">
+            <apexchart type="donut" :options="topBalancesChartOptions" :series="topBalancesChartSeries" height="310"></apexchart>
+          </div>
+
+          <div class="bank-list">
+            <div v-for="(account, index) in topBalanceAccounts" :key="account.id" class="bank-item">
+              <div style="display: flex; gap: 0.9rem; align-items: center;">
+                <div class="bank-mark" :style="{ background: `${topBalanceColors[index]}22`, color: topBalanceColors[index] }">{{ initials(account.name) }}</div>
+                <div>
+                  <div class="bank-name">{{ account.name }}</div>
+                  <div class="bank-copy">{{ account.accountType.replace(/_/g, ' ') }}</div>
+                </div>
               </div>
+              <strong :class="account.accountGroup === 'liability' ? 'amount-negative' : 'amount-positive'">{{ formatCurrency(displayBalance(account)) }}</strong>
             </div>
-            <strong :class="account.accountGroup === 'liability' ? 'amount-negative' : 'amount-positive'">{{ formatCurrency(displayBalance(account)) }}</strong>
           </div>
         </div>
       </section>
@@ -197,11 +203,13 @@ const props = defineProps<{
 }>()
 
 const dashboardActiveView = ref<'daily' | 'weekly' | 'monthly'>('monthly')
+const topBalanceColors = ['#1e4ed8', '#15803d', '#b45309', '#c2410c', '#0f766e', '#7c3aed']
 const assetTotal = computed(() => getAssetTotal(props.accounts, props.accountBalances))
 const liabilityTotal = computed(() => getLiabilityTotal(props.accounts, props.accountBalances))
 const netPosition = computed(() => getNetPosition(props.accounts, props.accountBalances))
 const sortedAccounts = computed(() => sortAccountsForDisplay(props.accounts.filter(account => account.isActive), props.accountBalances))
 const topAccount = computed(() => sortedAccounts.value[0] ?? null)
+const topBalanceAccounts = computed(() => sortedAccounts.value.filter(account => displayBalance(account) > 0).slice(0, 6))
 const cashOnHand = computed(() => props.accounts.filter(account => account.accountType === 'cash').reduce((sum, account) => sum + (props.accountBalances[account.id] ?? 0), 0))
 const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
 const currentMonthIncomes = computed(() => props.incomes.filter(income => income.date.startsWith(currentMonthKey)))
@@ -230,6 +238,53 @@ const incomeBreakdown = computed(() => {
 const accountName = (accountId: string) => props.accounts.find(account => account.id === accountId)?.name ?? 'Unknown account'
 const displayBalance = (account: Account) => getDisplayBalance(account, props.accountBalances[account.id] ?? 0)
 const initials = (value: string) => value.split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() ?? '').join('')
+const topBalancesChartSeries = computed(() => topBalanceAccounts.value.map(account => displayBalance(account)))
+const topBalancesChartOptions = computed(() => ({
+  chart: {
+    type: 'donut',
+    toolbar: { show: false },
+    parentHeightOffset: 0,
+    redrawOnParentResize: true,
+    redrawOnWindowResize: true,
+    foreColor: '#52617a',
+    fontFamily: 'Aptos, Segoe UI Variable, Segoe UI, sans-serif'
+  },
+  labels: topBalanceAccounts.value.map(account => account.name),
+  colors: topBalanceColors,
+  legend: { show: false },
+  dataLabels: {
+    enabled: false
+  },
+  stroke: {
+    width: 0
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '64%',
+        labels: {
+          show: true,
+          name: { show: true },
+          value: {
+            show: true,
+            formatter: (value: string) => formatCurrency(Number(value))
+          },
+          total: {
+            show: true,
+            label: 'Tracked',
+            formatter: () => formatCurrency(topBalancesChartSeries.value.reduce((sum, value) => sum + value, 0))
+          }
+        }
+      }
+    }
+  },
+  tooltip: {
+    theme: 'light',
+    y: {
+      formatter: (value: number) => formatCurrency(value)
+    }
+  }
+}))
 
 const auditAccountName = (value: unknown) => {
   const accountId = String(value ?? '').trim()
