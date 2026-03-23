@@ -153,7 +153,14 @@
     </div>
 
     <div class="content-grid">
-      <TransactionList title="Recent expenses" :items="recentExpenses" :credit-card-names="creditCardNameMap" :show-delete="false" />
+      <TransactionList
+        title="Recent expenses"
+        :items="recentExpenses"
+        :credit-card-names="creditCardNameMap"
+        :current-user-id="currentUserId"
+        :current-user-name="currentUserName"
+        :show-delete="false"
+      />
 
       <section class="panel">
         <div class="panel-header">
@@ -251,6 +258,8 @@ const props = defineProps<{
   creditCards: CreditCard[]
   creditCardTransactions: CreditCardTransaction[]
   creditCardNameMap: Record<string, string>
+  currentUserId: string
+  currentUserName: string
 }>()
 
 const dashboardActiveView = ref<'daily' | 'weekly' | 'monthly'>('monthly')

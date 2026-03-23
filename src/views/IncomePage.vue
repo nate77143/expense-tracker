@@ -185,6 +185,9 @@
             <div class="ledger-cell">
               <span class="ledger-cell-label">Remarks</span>
               <span class="ledger-remarks">{{ row.remarks }}</span>
+              <span v-if="creatorLabel(row)" class="ledger-remarks">
+                Logged by {{ creatorLabel(row) }}
+              </span>
             </div>
 
             <div class="ledger-cell ledger-action-cell">
@@ -248,7 +251,10 @@ type IncomeLedgerRow = {
   outflow: number
   delta: number
   runningTotal: number
+  createdByUserId?: string | null
   remarks: string
+  createdByName?: string | null
+  createdByEmail?: string | null
   canDelete: boolean
 }
 
@@ -257,6 +263,8 @@ const props = defineProps<{
   expenses: Expense[]
   creditCardTransactions: CreditCardTransaction[]
   activeTrackerId: string
+  currentUserId: string
+  currentUserName: string
 }>()
 
 const emit = defineEmits<{
@@ -391,7 +399,10 @@ const allLedgerRows = computed<IncomeLedgerRow[]>(() => {
       outflow: 0,
       delta: income.amount,
       runningTotal: 0,
+      createdByUserId: income.createdByUserId,
       remarks: income.remarks?.trim() || 'Income entry',
+      createdByName: income.createdByName,
+      createdByEmail: income.createdByEmail,
       canDelete: true
     })),
     ...props.expenses
@@ -407,7 +418,10 @@ const allLedgerRows = computed<IncomeLedgerRow[]>(() => {
         outflow: expense.amount,
         delta: -expense.amount,
         runningTotal: 0,
+        createdByUserId: expense.createdByUserId,
         remarks: expenseRemarks(expense),
+        createdByName: expense.createdByName,
+        createdByEmail: expense.createdByEmail,
         canDelete: false
       })),
     ...props.creditCardTransactions
@@ -423,7 +437,10 @@ const allLedgerRows = computed<IncomeLedgerRow[]>(() => {
         outflow: transaction.amount,
         delta: -transaction.amount,
         runningTotal: 0,
+        createdByUserId: transaction.createdByUserId,
         remarks: cardPaymentRemarks(transaction),
+        createdByName: transaction.createdByName,
+        createdByEmail: transaction.createdByEmail,
         canDelete: false
       }))
   ]
@@ -521,5 +538,17 @@ const clearFilters = () => {
   selectedEntryType.value = ''
   dateFrom.value = ''
   dateTo.value = ''
+}
+
+const creatorLabel = (row: Pick<IncomeLedgerRow, 'createdByName' | 'createdByEmail' | 'sourceId'> & { createdByUserId?: string | null }) => {
+  if (row.createdByName?.trim()) {
+    return row.createdByName.trim()
+  }
+
+  if (props.currentUserId && props.currentUserName && row.createdByUserId === props.currentUserId) {
+    return props.currentUserName
+  }
+
+  return row.createdByEmail ?? ''
 }
 </script>

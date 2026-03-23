@@ -175,6 +175,9 @@
             <div class="ledger-cell">
               <span class="ledger-cell-label">Remarks</span>
               <span class="ledger-remarks">{{ row.remarks || 'No remarks' }}</span>
+              <span v-if="creatorLabel(row)" class="ledger-remarks">
+                Logged by {{ creatorLabel(row) }}
+              </span>
             </div>
 
             <div class="ledger-cell ledger-action-cell">
@@ -209,6 +212,8 @@ type LedgerRow = Saving & {
 const props = defineProps<{
   savings: Saving[]
   activeTrackerId: string
+  currentUserId: string
+  currentUserName: string
 }>()
 
 const emit = defineEmits<{
@@ -358,5 +363,17 @@ const clearFilters = () => {
   selectedBank.value = ''
   dateFrom.value = ''
   dateTo.value = ''
+}
+
+const creatorLabel = (saving: Saving) => {
+  if (saving.createdByName?.trim()) {
+    return saving.createdByName.trim()
+  }
+
+  if (props.currentUserId && props.currentUserName && saving.createdByUserId === props.currentUserId) {
+    return props.currentUserName
+  }
+
+  return saving.createdByEmail ?? ''
 }
 </script>

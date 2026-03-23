@@ -79,6 +79,8 @@
             :credit-cards="creditCards"
             :credit-card-transactions="creditCardTransactions"
             :credit-card-name-map="creditCardNameMap"
+            :current-user-id="session.user.id"
+            :current-user-name="currentUserDisplayName"
           />
           <ExpensesPage
             v-else-if="visiblePage === 'expenses'"
@@ -89,6 +91,8 @@
             :credit-card-transactions="creditCardTransactions"
             :credit-card-name-map="creditCardNameMap"
             :active-tracker-id="activeTrackerId"
+            :current-user-id="session.user.id"
+            :current-user-name="currentUserDisplayName"
             @add-expense="addExpense"
             @delete-expense="deleteExpense"
           />
@@ -98,6 +102,8 @@
             :expenses="expenses"
             :credit-card-transactions="creditCardTransactions"
             :active-tracker-id="activeTrackerId"
+            :current-user-id="session.user.id"
+            :current-user-name="currentUserDisplayName"
             @add-income="addIncome"
             @delete-income="deleteIncome"
           />
@@ -105,6 +111,8 @@
             v-else-if="visiblePage === 'savings'"
             :savings="savings"
             :active-tracker-id="activeTrackerId"
+            :current-user-id="session.user.id"
+            :current-user-name="currentUserDisplayName"
             @add-saving="addSaving"
             @delete-saving="deleteSaving"
           />
@@ -509,6 +517,22 @@ const getSavingsBankBalance = (bank: string) => {
     .reduce((sum, saving) => sum + saving.amount, 0)
 }
 
+const getCurrentUserDisplayName = () => {
+  const firstName = String(session.value?.user.user_metadata?.first_name ?? '').trim()
+  const lastName = String(session.value?.user.user_metadata?.last_name ?? '').trim()
+  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+
+  return fullName || String(session.value?.user.user_metadata?.full_name ?? '').trim() || null
+}
+
+const currentUserDisplayName = computed(() => getCurrentUserDisplayName() ?? session.value?.user.email ?? '')
+
+const getRecordCreator = () => ({
+  createdByName: getCurrentUserDisplayName(),
+  createdByUserId: session.value?.user.id ?? null,
+  createdByEmail: session.value?.user.email ?? null
+})
+
 const isDerivedSavingsRemark = (remarks: string | undefined, prefixes: string[]) => {
   const value = remarks?.trim().toLowerCase() ?? ''
   return prefixes.some(prefix => value.startsWith(prefix))
@@ -860,7 +884,10 @@ const loadRecurringTemplateData = async (trackerId: string) => {
 }
 
 const persistSavingRecord = async (saving: Omit<Saving, 'id'>) => {
-  const { data, error } = await insertSaving(saving)
+  const { data, error } = await insertSaving({
+    ...getRecordCreator(),
+    ...saving
+  })
 
   if (error || !data) {
     throw error ?? new Error('Insert failed')
@@ -871,7 +898,10 @@ const persistSavingRecord = async (saving: Omit<Saving, 'id'>) => {
 }
 
 const persistIncomeRecord = async (income: Omit<Income, 'id'>) => {
-  const { data, error } = await insertIncome(income)
+  const { data, error } = await insertIncome({
+    ...getRecordCreator(),
+    ...income
+  })
 
   if (error || !data) {
     throw error ?? new Error('Insert failed')
@@ -907,6 +937,7 @@ const persistExpenseRecord = async (expense: Omit<Expense, 'id'>) => {
   }
 
   const { data, error } = await insertExpense({
+    ...getRecordCreator(),
     trackerId: expense.trackerId,
     date: expense.date,
     category: expense.category,
@@ -959,6 +990,7 @@ const persistExpenseRecord = async (expense: Omit<Expense, 'id'>) => {
 
   if (spendFromCreditCard) {
     const { data: transactionData, error: transactionError } = await insertCreditCardTransaction({
+      ...getRecordCreator(),
       trackerId: expense.trackerId,
       creditCardId: expense.fundingSourceCardId as string,
       expenseId: data.id,
@@ -1003,6 +1035,7 @@ const persistCreditCardPayment = async (
   }
 
   const { data, error } = await insertCreditCardTransaction({
+    ...getRecordCreator(),
     ...payment,
     type: 'payment'
   })

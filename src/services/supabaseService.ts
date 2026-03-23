@@ -12,6 +12,9 @@ import type {
 type ExpenseRow = {
   id: string
   tracker_id?: string
+  created_by_name?: string | null
+  created_by_user_id?: string | null
+  created_by_email?: string | null
   date: string
   category: string
   payment_source?: 'income' | 'savings' | 'credit_card' | null
@@ -25,6 +28,9 @@ type ExpenseRow = {
 type IncomeRow = {
   id: string
   tracker_id?: string
+  created_by_name?: string | null
+  created_by_user_id?: string | null
+  created_by_email?: string | null
   date: string
   amount: number
   remarks: string
@@ -34,6 +40,9 @@ type IncomeRow = {
 type SavingRow = {
   id: string
   tracker_id?: string
+  created_by_name?: string | null
+  created_by_user_id?: string | null
+  created_by_email?: string | null
   bank: string
   amount: number
   remarks?: string | null
@@ -56,6 +65,9 @@ type CreditCardRow = {
 type CreditCardTransactionRow = {
   id: string
   tracker_id: string
+  created_by_name?: string | null
+  created_by_user_id?: string | null
+  created_by_email?: string | null
   credit_card_id: string
   expense_id?: string | null
   date: string
@@ -109,6 +121,9 @@ type AuditLogRow = {
 const mapExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
+  createdByName: row.created_by_name ?? null,
+  createdByUserId: row.created_by_user_id ?? null,
+  createdByEmail: row.created_by_email ?? null,
   date: row.date,
   category: row.category,
   fundingSource:
@@ -123,6 +138,9 @@ const mapExpense = (row: ExpenseRow): Expense => ({
 const mapIncome = (row: IncomeRow): Income => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
+  createdByName: row.created_by_name ?? null,
+  createdByUserId: row.created_by_user_id ?? null,
+  createdByEmail: row.created_by_email ?? null,
   date: row.date,
   amount: row.amount,
   remarks: row.remarks,
@@ -132,6 +150,9 @@ const mapIncome = (row: IncomeRow): Income => ({
 const mapSaving = (row: SavingRow): Saving => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
+  createdByName: row.created_by_name ?? null,
+  createdByUserId: row.created_by_user_id ?? null,
+  createdByEmail: row.created_by_email ?? null,
   bank: row.bank,
   amount: row.amount,
   remarks: row.remarks ?? undefined,
@@ -154,6 +175,9 @@ const mapCreditCard = (row: CreditCardRow): CreditCard => ({
 const mapCreditCardTransaction = (row: CreditCardTransactionRow): CreditCardTransaction => ({
   id: row.id,
   trackerId: row.tracker_id,
+  createdByName: row.created_by_name ?? null,
+  createdByUserId: row.created_by_user_id ?? null,
+  createdByEmail: row.created_by_email ?? null,
   creditCardId: row.credit_card_id,
   expenseId: row.expense_id ?? null,
   date: row.date,
@@ -278,6 +302,9 @@ export async function fetchAuditLogs(trackerId: string, limit = 20) {
 export async function insertExpense(expense: Omit<Expense, 'id'>) {
   const payload: Record<string, unknown> = {
     tracker_id: expense.trackerId,
+    created_by_name: expense.createdByName,
+    created_by_user_id: expense.createdByUserId,
+    created_by_email: expense.createdByEmail,
     date: expense.date,
     category: expense.category,
     payment_source: expense.fundingSource,
@@ -312,6 +339,9 @@ export async function insertIncome(income: Omit<Income, 'id'>) {
     .insert([
       {
         tracker_id: income.trackerId,
+        created_by_name: income.createdByName,
+        created_by_user_id: income.createdByUserId,
+        created_by_email: income.createdByEmail,
         date: income.date,
         amount: income.amount,
         source: income.source,
@@ -330,6 +360,9 @@ export async function insertSaving(saving: Omit<Saving, 'id'>) {
     .insert([
       {
         tracker_id: saving.trackerId,
+        created_by_name: saving.createdByName,
+        created_by_user_id: saving.createdByUserId,
+        created_by_email: saving.createdByEmail,
         date: saving.date,
         bank: saving.bank,
         amount: saving.amount,
@@ -369,6 +402,9 @@ export async function insertCreditCardTransaction(transaction: Omit<CreditCardTr
     .insert([
       {
         tracker_id: transaction.trackerId,
+        created_by_name: transaction.createdByName,
+        created_by_user_id: transaction.createdByUserId,
+        created_by_email: transaction.createdByEmail,
         credit_card_id: transaction.creditCardId,
         expense_id: transaction.expenseId,
         date: transaction.date,

@@ -32,6 +32,36 @@
       </div>
 
       <form class="form-shell" @submit.prevent="submitAuth">
+        <template v-if="isSignUpMode">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label" for="auth-first-name">First name</label>
+              <input
+                id="auth-first-name"
+                v-model.trim="form.firstName"
+                type="text"
+                class="form-input"
+                placeholder="First name"
+                autocomplete="given-name"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="auth-last-name">Last name</label>
+              <input
+                id="auth-last-name"
+                v-model.trim="form.lastName"
+                type="text"
+                class="form-input"
+                placeholder="Last name"
+                autocomplete="family-name"
+                required
+              />
+            </div>
+          </div>
+        </template>
+
         <div class="form-group">
           <label class="form-label" for="auth-email">Email</label>
           <input
@@ -97,6 +127,8 @@ const statusMessage = ref('')
 const statusTone = ref<'default' | 'warning'>('default')
 
 const form = reactive({
+  firstName: '',
+  lastName: '',
   email: '',
   password: '',
   confirmPassword: ''
@@ -110,6 +142,8 @@ const switchMode = (signUpMode: boolean) => {
   isSignUpMode.value = signUpMode
   statusMessage.value = ''
   statusTone.value = 'default'
+  form.firstName = ''
+  form.lastName = ''
   form.password = ''
   form.confirmPassword = ''
 }
@@ -122,6 +156,12 @@ const submitAuth = async () => {
   }
 
   if (isSignUpMode.value) {
+    if (!form.firstName || !form.lastName) {
+      statusMessage.value = 'Please enter your first and last name.'
+      statusTone.value = 'warning'
+      return
+    }
+
     if (form.password.length < 6) {
       statusMessage.value = 'Use a password with at least 6 characters.'
       statusTone.value = 'warning'
@@ -140,7 +180,10 @@ const submitAuth = async () => {
 
   try {
     if (isSignUpMode.value) {
-      const { session, error } = await signUpWithEmail(form.email, form.password)
+      const { session, error } = await signUpWithEmail(form.email, form.password, {
+        firstName: form.firstName,
+        lastName: form.lastName
+      })
 
       if (error) {
         throw error

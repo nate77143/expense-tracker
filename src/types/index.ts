@@ -52,6 +52,9 @@ export interface Transaction {
   date: string
   amount: number
   remarks: string
+  createdByName?: string | null
+  createdByUserId?: string | null
+  createdByEmail?: string | null
 }
 
 export interface Expense extends Transaction {
@@ -73,6 +76,9 @@ export interface Saving {
   amount: number
   remarks?: string
   date: string
+  createdByName?: string | null
+  createdByUserId?: string | null
+  createdByEmail?: string | null
   sourceExpenseId?: string | null
   sourceCreditCardTransactionId?: string | null
 }
@@ -101,6 +107,9 @@ export interface CreditCardTransaction {
   paymentSource?: CreditCardPaymentSource
   paymentSourceBank?: string
   remarks?: string
+  createdByName?: string | null
+  createdByUserId?: string | null
+  createdByEmail?: string | null
   createdAt: string
 }
 

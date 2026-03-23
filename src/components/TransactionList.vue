@@ -40,6 +40,9 @@
                   : 'income'
             }}
           </div>
+          <div v-if="creatorLabel(item)" class="transaction-meta">
+            Logged by {{ creatorLabel(item) }}
+          </div>
           <div v-if="item.remarks" class="transaction-meta">{{ item.remarks }}</div>
         </div>
 
@@ -74,6 +77,8 @@ const props = defineProps<{
   isIncome?: boolean
   showDelete?: boolean
   scrollable?: boolean
+  currentUserId?: string
+  currentUserName?: string
 }>()
 
 defineEmits<{
@@ -103,5 +108,17 @@ const itemLabel = (item: Expense | Income) => {
   }
 
   return item.source?.trim() || 'General income'
+}
+
+const creatorLabel = (item: Expense | Income) => {
+  if (item.createdByName?.trim()) {
+    return item.createdByName.trim()
+  }
+
+  if (props.currentUserId && props.currentUserName && item.createdByUserId === props.currentUserId) {
+    return props.currentUserName
+  }
+
+  return item.createdByEmail ?? ''
 }
 </script>

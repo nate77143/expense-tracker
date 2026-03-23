@@ -84,6 +84,8 @@
           title="All transactions"
           :items="filteredExpenses"
           :credit-card-names="creditCardNameMap"
+          :current-user-id="currentUserId"
+          :current-user-name="currentUserName"
           :show-delete="true"
           :scrollable="false"
           @delete="$emit('delete-expense', $event)"
@@ -108,6 +110,8 @@ const props = defineProps<{
   creditCardTransactions: CreditCardTransaction[]
   creditCardNameMap: Record<string, string>
   activeTrackerId: string
+  currentUserId: string
+  currentUserName: string
 }>()
 
 const emit = defineEmits<{
