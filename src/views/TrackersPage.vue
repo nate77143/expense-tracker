@@ -252,6 +252,8 @@ const props = defineProps<{
   members: TrackerMember[]
   activityLogs: BudgetAuditLog[]
   activeTrackerId: string
+  currentUserId: string
+  currentUserName: string
   currentUserEmail: string
 }>()
 
@@ -411,6 +413,17 @@ const entityLabel = (entityType: BudgetAuditLog['entityType']) => {
   return 'Savings'
 }
 
+const entityEntryLabel = (entityType: BudgetAuditLog['entityType']) => {
+  if (entityType === 'tracker_members') return 'member'
+  if (entityType === 'trackers') return 'tracker'
+  if (entityType === 'expenses') return 'expense'
+  if (entityType === 'incomes') return 'income'
+  if (entityType === 'credit_cards') return 'credit card'
+  if (entityType === 'credit_card_transactions') return 'card activity'
+  if (entityType === 'recurring_transactions') return 'recurring transaction'
+  return 'savings'
+}
+
 const actionLabel = (action: BudgetAuditLog['action']) => {
   if (action === 'insert') return 'Created'
   if (action === 'update') return 'Updated'
@@ -552,7 +565,7 @@ const activityDetails = (entry: BudgetAuditLog): ActivityDetail[] => {
 }
 
 const activityTitle = (entry: BudgetAuditLog) => {
-  const actor = entry.actorEmail || 'A user'
+  const actor = activityActor(entry)
 
   if (entry.entityType === 'tracker_members') {
     const targetEmail =
@@ -566,7 +579,23 @@ const activityTitle = (entry: BudgetAuditLog) => {
     return `${actor} ${actionLabel(entry.action).toLowerCase()} ${trackerName}`
   }
 
-  return `${actor} ${actionLabel(entry.action).toLowerCase()} a ${entityLabel(entry.entityType).toLowerCase()} entry`
+  return `${actor} ${actionLabel(entry.action).toLowerCase()} a ${entityEntryLabel(entry.entityType)} entry`
+}
+
+const activityActor = (entry: BudgetAuditLog) => {
+  if (entry.actorName?.trim()) {
+    return entry.actorName.trim()
+  }
+
+  if (props.currentUserId && props.currentUserName && entry.actorUserId === props.currentUserId) {
+    return props.currentUserName
+  }
+
+  if (entry.actorEmail?.trim()) {
+    return entry.actorEmail.trim()
+  }
+
+  return 'A user'
 }
 
 const activityCopy = (entry: BudgetAuditLog) => {

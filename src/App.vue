@@ -146,6 +146,8 @@
             :members="trackerMembers"
             :activity-logs="auditLogs"
             :active-tracker-id="activeTrackerId"
+            :current-user-id="session.user.id"
+            :current-user-name="currentUserDisplayName"
             :current-user-email="session.user.email ?? ''"
             @select-tracker="activeTrackerId = $event"
             @create-tracker="handleCreateTracker"
@@ -250,7 +252,7 @@ import {
   subscribeToAuthChanges
 } from './services/supabaseAuthService'
 import {
-  deleteCreditCard,
+  deleteCreditCardWithRelated,
   deleteCreditCardTransaction,
   deleteExpense as deleteExpenseApi,
   deleteIncome as deleteIncomeApi,
@@ -532,6 +534,24 @@ const getRecordCreator = () => ({
   createdByUserId: session.value?.user.id ?? null,
   createdByEmail: session.value?.user.email ?? null
 })
+
+const hasRecurringGeneratedRecord = (transactionId: string, runDate: string) => {
+  return (
+    expenses.value.some(
+      expense => expense.sourceRecurringTransactionId === transactionId && expense.sourceRecurringRunDate === runDate
+    ) ||
+    incomes.value.some(
+      income => income.sourceRecurringTransactionId === transactionId && income.sourceRecurringRunDate === runDate
+    ) ||
+    savings.value.some(
+      saving => saving.sourceRecurringTransactionId === transactionId && saving.sourceRecurringRunDate === runDate
+    ) ||
+    creditCardTransactions.value.some(
+      transaction =>
+        transaction.sourceRecurringTransactionId === transactionId && transaction.sourceRecurringRunDate === runDate
+    )
+  )
+}
 
 const isDerivedSavingsRemark = (remarks: string | undefined, prefixes: string[]) => {
   const value = remarks?.trim().toLowerCase() ?? ''
@@ -1072,12 +1092,18 @@ const createEntryFromRecurringTransaction = async (transaction: RecurringTransac
   const description = transaction.description.trim()
   const remarks = buildAutoRemark(description, transaction.remarks)
 
+  if (hasRecurringGeneratedRecord(transaction.id, runDate)) {
+    return
+  }
+
   if (transaction.type === 'income') {
     await persistIncomeRecord({
       trackerId: transaction.trackerId,
       date: runDate,
       amount: transaction.amount,
       source: transaction.incomeSource?.trim() || description,
+      sourceRecurringTransactionId: transaction.id,
+      sourceRecurringRunDate: runDate,
       remarks
     })
     return
@@ -1089,6 +1115,8 @@ const createEntryFromRecurringTransaction = async (transaction: RecurringTransac
       date: runDate,
       bank: findSavingsBankDisplayName(savings.value, transaction.savingsBank?.trim() || description || 'Savings'),
       amount: transaction.amount,
+      sourceRecurringTransactionId: transaction.id,
+      sourceRecurringRunDate: runDate,
       remarks
     })
     return
@@ -1105,6 +1133,8 @@ const createEntryFromRecurringTransaction = async (transaction: RecurringTransac
       category: transaction.expenseCategory?.trim() || 'Others',
       fundingSource: 'credit_card',
       fundingSourceCardId: transaction.creditCardId,
+      sourceRecurringTransactionId: transaction.id,
+      sourceRecurringRunDate: runDate,
       amount: transaction.amount,
       remarks
     })
@@ -1119,6 +1149,8 @@ const createEntryFromRecurringTransaction = async (transaction: RecurringTransac
     fundingSourceBank: transaction.expenseFundingSourceBank,
     fundingSourceCardId: transaction.creditCardId,
     targetSavingsBank: transaction.expenseTargetSavingsBank,
+    sourceRecurringTransactionId: transaction.id,
+    sourceRecurringRunDate: runDate,
     amount: transaction.amount,
     remarks
   })
@@ -1523,28 +1555,29 @@ const addCreditCardEntry = async (card: Omit<CreditCard, 'id' | 'createdAt'>) =>
 
 const deleteCreditCardEntry = async (id: string) => {
   try {
-    const linkedExpenseIds = expenses.value
+    const relatedExpenseIds = expenses.value
       .filter(expense => expense.fundingSource === 'credit_card' && expense.fundingSourceCardId === id)
       .map(expense => expense.id)
-
-    for (const expenseId of linkedExpenseIds) {
-      await deleteExpenseWithSync(expenseId)
-    }
-
-    const standaloneTransactionIds = creditCardTransactions.value
+    const relatedStandaloneTransactionIds = creditCardTransactions.value
       .filter(transaction => transaction.creditCardId === id && !transaction.expenseId)
       .map(transaction => transaction.id)
+    const relatedSavingIds = savings.value
+      .filter(
+        saving =>
+          saving.sourceCreditCardTransactionId &&
+          relatedStandaloneTransactionIds.includes(saving.sourceCreditCardTransactionId)
+      )
+      .map(saving => saving.id)
 
-    for (const transactionId of standaloneTransactionIds) {
-      await deleteCreditCardTransactionWithSync(transactionId)
-    }
-
-    const { error } = await deleteCreditCard(id)
+    const { error } = await deleteCreditCardWithRelated(id)
 
     if (error) {
       throw error
     }
 
+    expenses.value = expenses.value.filter(expense => !relatedExpenseIds.includes(expense.id))
+    creditCardTransactions.value = creditCardTransactions.value.filter(transaction => transaction.creditCardId !== id)
+    removeLocalSavings(relatedSavingIds)
     removeLocalCreditCard(id)
     await loadRecurringTemplateData(activeTrackerId.value)
     await loadAuditActivity(activeTrackerId.value)

@@ -12,6 +12,8 @@ import type {
 type ExpenseRow = {
   id: string
   tracker_id?: string
+  source_recurring_transaction_id?: string | null
+  source_recurring_run_date?: string | null
   created_by_name?: string | null
   created_by_user_id?: string | null
   created_by_email?: string | null
@@ -28,6 +30,8 @@ type ExpenseRow = {
 type IncomeRow = {
   id: string
   tracker_id?: string
+  source_recurring_transaction_id?: string | null
+  source_recurring_run_date?: string | null
   created_by_name?: string | null
   created_by_user_id?: string | null
   created_by_email?: string | null
@@ -40,6 +44,8 @@ type IncomeRow = {
 type SavingRow = {
   id: string
   tracker_id?: string
+  source_recurring_transaction_id?: string | null
+  source_recurring_run_date?: string | null
   created_by_name?: string | null
   created_by_user_id?: string | null
   created_by_email?: string | null
@@ -65,6 +71,8 @@ type CreditCardRow = {
 type CreditCardTransactionRow = {
   id: string
   tracker_id: string
+  source_recurring_transaction_id?: string | null
+  source_recurring_run_date?: string | null
   created_by_name?: string | null
   created_by_user_id?: string | null
   created_by_email?: string | null
@@ -111,6 +119,7 @@ type AuditLogRow = {
   entity_type: BudgetAuditLog['entityType']
   record_id: string
   action: BudgetAuditLog['action']
+  actor_name?: string | null
   actor_user_id?: string | null
   actor_email?: string | null
   old_data?: Record<string, unknown> | null
@@ -121,6 +130,8 @@ type AuditLogRow = {
 const mapExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
+  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
+  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
   createdByName: row.created_by_name ?? null,
   createdByUserId: row.created_by_user_id ?? null,
   createdByEmail: row.created_by_email ?? null,
@@ -138,6 +149,8 @@ const mapExpense = (row: ExpenseRow): Expense => ({
 const mapIncome = (row: IncomeRow): Income => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
+  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
+  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
   createdByName: row.created_by_name ?? null,
   createdByUserId: row.created_by_user_id ?? null,
   createdByEmail: row.created_by_email ?? null,
@@ -150,6 +163,8 @@ const mapIncome = (row: IncomeRow): Income => ({
 const mapSaving = (row: SavingRow): Saving => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
+  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
+  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
   createdByName: row.created_by_name ?? null,
   createdByUserId: row.created_by_user_id ?? null,
   createdByEmail: row.created_by_email ?? null,
@@ -175,6 +190,8 @@ const mapCreditCard = (row: CreditCardRow): CreditCard => ({
 const mapCreditCardTransaction = (row: CreditCardTransactionRow): CreditCardTransaction => ({
   id: row.id,
   trackerId: row.tracker_id,
+  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
+  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
   createdByName: row.created_by_name ?? null,
   createdByUserId: row.created_by_user_id ?? null,
   createdByEmail: row.created_by_email ?? null,
@@ -221,6 +238,7 @@ const mapAuditLog = (row: AuditLogRow): BudgetAuditLog => ({
   entityType: row.entity_type,
   recordId: row.record_id,
   action: row.action,
+  actorName: row.actor_name ?? null,
   actorUserId: row.actor_user_id ?? null,
   actorEmail: row.actor_email ?? null,
   oldData: row.old_data ?? null,
@@ -302,6 +320,8 @@ export async function fetchAuditLogs(trackerId: string, limit = 20) {
 export async function insertExpense(expense: Omit<Expense, 'id'>) {
   const payload: Record<string, unknown> = {
     tracker_id: expense.trackerId,
+    source_recurring_transaction_id: expense.sourceRecurringTransactionId,
+    source_recurring_run_date: expense.sourceRecurringRunDate,
     created_by_name: expense.createdByName,
     created_by_user_id: expense.createdByUserId,
     created_by_email: expense.createdByEmail,
@@ -339,6 +359,8 @@ export async function insertIncome(income: Omit<Income, 'id'>) {
     .insert([
       {
         tracker_id: income.trackerId,
+        source_recurring_transaction_id: income.sourceRecurringTransactionId,
+        source_recurring_run_date: income.sourceRecurringRunDate,
         created_by_name: income.createdByName,
         created_by_user_id: income.createdByUserId,
         created_by_email: income.createdByEmail,
@@ -360,6 +382,8 @@ export async function insertSaving(saving: Omit<Saving, 'id'>) {
     .insert([
       {
         tracker_id: saving.trackerId,
+        source_recurring_transaction_id: saving.sourceRecurringTransactionId,
+        source_recurring_run_date: saving.sourceRecurringRunDate,
         created_by_name: saving.createdByName,
         created_by_user_id: saving.createdByUserId,
         created_by_email: saving.createdByEmail,
@@ -402,6 +426,8 @@ export async function insertCreditCardTransaction(transaction: Omit<CreditCardTr
     .insert([
       {
         tracker_id: transaction.trackerId,
+        source_recurring_transaction_id: transaction.sourceRecurringTransactionId,
+        source_recurring_run_date: transaction.sourceRecurringRunDate,
         created_by_name: transaction.createdByName,
         created_by_user_id: transaction.createdByUserId,
         created_by_email: transaction.createdByEmail,
@@ -504,6 +530,14 @@ export async function deleteSaving(id: string) {
 
 export async function deleteCreditCard(id: string) {
   const { data, error } = await supabase.from('credit_cards').delete().eq('id', id)
+  return { data, error }
+}
+
+export async function deleteCreditCardWithRelated(id: string) {
+  const { data, error } = await supabase.rpc('delete_credit_card_with_related', {
+    target_credit_card_id: id
+  })
+
   return { data, error }
 }
 

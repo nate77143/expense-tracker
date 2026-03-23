@@ -39,6 +39,7 @@ export interface BudgetAuditLog {
     | 'recurring_transactions'
   recordId: string
   action: AuditLogAction
+  actorName?: string | null
   actorUserId?: string | null
   actorEmail?: string | null
   oldData?: Record<string, unknown> | null
@@ -52,6 +53,8 @@ export interface Transaction {
   date: string
   amount: number
   remarks: string
+  sourceRecurringTransactionId?: string | null
+  sourceRecurringRunDate?: string | null
   createdByName?: string | null
   createdByUserId?: string | null
   createdByEmail?: string | null
@@ -76,6 +79,8 @@ export interface Saving {
   amount: number
   remarks?: string
   date: string
+  sourceRecurringTransactionId?: string | null
+  sourceRecurringRunDate?: string | null
   createdByName?: string | null
   createdByUserId?: string | null
   createdByEmail?: string | null
@@ -107,6 +112,8 @@ export interface CreditCardTransaction {
   paymentSource?: CreditCardPaymentSource
   paymentSourceBank?: string
   remarks?: string
+  sourceRecurringTransactionId?: string | null
+  sourceRecurringRunDate?: string | null
   createdByName?: string | null
   createdByUserId?: string | null
   createdByEmail?: string | null

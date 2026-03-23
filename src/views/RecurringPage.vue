@@ -338,6 +338,11 @@ const submitForm = () => {
     return
   }
 
+  if (form.endDate && form.endDate < form.startDate) {
+    window.alert('End date must be on or after the start date.')
+    return
+  }
+
   if (form.type === 'expense') {
     if (!form.expenseCategory) {
       window.alert('Please enter an expense category for this recurring expense.')
