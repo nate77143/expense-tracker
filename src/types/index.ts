@@ -1,10 +1,11 @@
-export type TrackerRole = 'owner' | 'admin' | 'member' | 'viewer'
+﻿export type TrackerRole = 'owner' | 'admin' | 'member' | 'viewer'
 export type TrackerMemberStatus = 'active' | 'invited'
 export type AuditLogAction = 'insert' | 'update' | 'delete'
-export type ExpenseFundingSource = 'income' | 'savings' | 'credit_card'
-export type CreditCardTransactionType = 'charge' | 'payment'
-export type CreditCardPaymentSource = 'income' | 'savings'
-export type RecurringTransactionType = 'expense' | 'income' | 'saving' | 'credit_card_charge'
+export type AccountType = 'cash' | 'checking' | 'savings' | 'ewallet' | 'credit_card' | 'other_asset' | 'other_liability'
+export type AccountGroup = 'asset' | 'liability'
+export type TransferType = 'general' | 'cash_withdrawal' | 'savings_transfer' | 'credit_card_payment'
+export type AccountAdjustmentReason = 'opening_balance' | 'manual_adjustment' | 'reconciliation_fix'
+export type RecurringRuleType = 'income' | 'expense' | 'transfer'
 export type RecurringFrequency = 'weekly' | 'monthly'
 
 export interface Tracker {
@@ -31,12 +32,16 @@ export interface BudgetAuditLog {
   entityType:
     | 'trackers'
     | 'tracker_members'
+    | 'accounts'
     | 'expenses'
     | 'incomes'
-    | 'savings'
+    | 'transfers'
+    | 'account_adjustments'
     | 'credit_cards'
     | 'credit_card_transactions'
     | 'recurring_transactions'
+    | 'recurring_rules'
+    | 'savings'
   recordId: string
   action: AuditLogAction
   actorName?: string | null
@@ -47,50 +52,61 @@ export interface BudgetAuditLog {
   occurredAt: string
 }
 
-export interface Transaction {
+export interface RecordAuditFields {
+  sourceRecurringRuleId?: string | null
+  sourceRecurringRunDate?: string | null
+  createdByName?: string | null
+  createdByUserId?: string | null
+  createdByEmail?: string | null
+}
+
+export interface Transaction extends RecordAuditFields {
   id: string
   trackerId: string
   date: string
   amount: number
   remarks: string
-  sourceRecurringTransactionId?: string | null
-  sourceRecurringRunDate?: string | null
-  createdByName?: string | null
-  createdByUserId?: string | null
-  createdByEmail?: string | null
 }
 
-export interface Expense extends Transaction {
-  category: string
-  fundingSource: ExpenseFundingSource
-  fundingSourceBank?: string
-  fundingSourceCardId?: string
-  targetSavingsBank?: string
+export interface Account extends RecordAuditFields {
+  id: string
+  trackerId: string
+  name: string
+  accountType: AccountType
+  accountGroup: AccountGroup
+  institution: string
+  currencyCode: string
+  isActive: boolean
+  sortOrder: number
+  createdAt: string
 }
 
 export interface Income extends Transaction {
   source?: string
+  toAccountId: string
 }
 
-export interface Saving {
-  id: string
-  trackerId: string
-  bank: string
-  amount: number
-  remarks?: string
-  date: string
-  sourceRecurringTransactionId?: string | null
-  sourceRecurringRunDate?: string | null
-  createdByName?: string | null
-  createdByUserId?: string | null
-  createdByEmail?: string | null
-  sourceExpenseId?: string | null
-  sourceCreditCardTransactionId?: string | null
+export interface Expense extends Transaction {
+  category: string
+  merchant?: string
+  fromAccountId: string
+}
+
+export interface Transfer extends Transaction {
+  fromAccountId: string
+  toAccountId: string
+  transferType: TransferType
+}
+
+export interface AccountAdjustment extends Transaction {
+  accountId: string
+  reason: AccountAdjustmentReason
 }
 
 export interface CreditCard {
   id: string
   trackerId: string
+  accountId: string
   name: string
   issuer: string
   limitAmount: number
@@ -99,31 +115,10 @@ export interface CreditCard {
   createdAt: string
 }
 
-export interface CreditCardTransaction {
+export interface RecurringRule {
   id: string
   trackerId: string
-  creditCardId: string
-  expenseId?: string | null
-  date: string
-  type: CreditCardTransactionType
-  amount: number
-  merchant?: string
-  category?: string
-  paymentSource?: CreditCardPaymentSource
-  paymentSourceBank?: string
-  remarks?: string
-  sourceRecurringTransactionId?: string | null
-  sourceRecurringRunDate?: string | null
-  createdByName?: string | null
-  createdByUserId?: string | null
-  createdByEmail?: string | null
-  createdAt: string
-}
-
-export interface RecurringTransaction {
-  id: string
-  trackerId: string
-  type: RecurringTransactionType
+  ruleType: RecurringRuleType
   frequency: RecurringFrequency
   intervalCount: number
   startDate: string
@@ -133,15 +128,19 @@ export interface RecurringTransaction {
   amount: number
   description: string
   remarks?: string
-  expenseCategory?: string
-  expenseFundingSource?: ExpenseFundingSource
-  expenseFundingSourceBank?: string
-  expenseTargetSavingsBank?: string
   incomeSource?: string
-  savingsBank?: string
-  creditCardId?: string
-  merchant?: string
+  incomeToAccountId?: string
+  expenseCategory?: string
+  expenseMerchant?: string
+  expenseFromAccountId?: string
+  transferFromAccountId?: string
+  transferToAccountId?: string
   createdAt: string
+}
+
+export interface AccountBalanceSummary {
+  accountId: string
+  balance: number
 }
 
 export type ReportView = 'daily' | 'weekly' | 'monthly'

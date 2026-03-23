@@ -102,7 +102,8 @@ type PageId =
   | 'dashboard'
   | 'expenses'
   | 'income'
-  | 'savings'
+  | 'accounts'
+  | 'transfers'
   | 'cards'
   | 'recurring'
   | 'reports'
@@ -130,9 +131,10 @@ const accountMenuRef = ref<HTMLElement | null>(null)
 const items = computed(() => {
   return [
     { id: 'dashboard', label: 'Dashboard', copy: 'Overview' },
-    { id: 'expenses', label: 'Transactions', copy: 'Spending' },
+    { id: 'expenses', label: 'Expenses', copy: 'Spending' },
     { id: 'income', label: 'Income', copy: 'Inflow' },
-    { id: 'savings', label: 'Savings', copy: 'Ledger' },
+    { id: 'accounts', label: 'Accounts', copy: 'Balances' },
+    { id: 'transfers', label: 'Transfers', copy: 'Moves' },
     { id: 'cards', label: 'Cards', copy: 'Credit' },
     { id: 'recurring', label: 'Automation', copy: 'Recurring' },
     { id: 'reports', label: 'Reports', copy: 'Insights' }

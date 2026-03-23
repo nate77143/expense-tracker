@@ -284,41 +284,69 @@ const statusTone = ref<'default' | 'warning'>('default')
 const activityDateFrom = ref('')
 const activityDateTo = ref('')
 
+const entityLabels: Record<BudgetAuditLog['entityType'], string> = {
+  trackers: 'Tracker',
+  tracker_members: 'Members',
+  accounts: 'Accounts',
+  expenses: 'Expenses',
+  incomes: 'Income',
+  transfers: 'Transfers',
+  account_adjustments: 'Adjustments',
+  credit_cards: 'Credit cards',
+  credit_card_transactions: 'Legacy card activity',
+  recurring_transactions: 'Legacy recurring',
+  recurring_rules: 'Recurring',
+  savings: 'Legacy savings'
+}
+
+const entityEntryLabels: Record<BudgetAuditLog['entityType'], string> = {
+  trackers: 'tracker',
+  tracker_members: 'member',
+  accounts: 'account',
+  expenses: 'expense',
+  incomes: 'income',
+  transfers: 'transfer',
+  account_adjustments: 'adjustment',
+  credit_cards: 'credit card',
+  credit_card_transactions: 'legacy card activity',
+  recurring_transactions: 'legacy recurring rule',
+  recurring_rules: 'recurring rule',
+  savings: 'legacy savings entry'
+}
+
+const trackedFieldsByEntity: Record<BudgetAuditLog['entityType'], string[]> = {
+  trackers: ['name', 'description', 'is_personal'],
+  tracker_members: ['email', 'role', 'status'],
+  accounts: ['name', 'account_type', 'account_group', 'institution', 'currency_code', 'is_active'],
+  expenses: ['amount', 'category', 'merchant', 'from_account_id', 'remarks', 'date'],
+  incomes: ['amount', 'source', 'to_account_id', 'remarks', 'date'],
+  transfers: ['amount', 'from_account_id', 'to_account_id', 'transfer_type', 'remarks', 'date'],
+  account_adjustments: ['amount', 'account_id', 'reason', 'remarks', 'date'],
+  credit_cards: ['name', 'issuer', 'limit_amount', 'statement_day', 'due_day', 'account_id'],
+  credit_card_transactions: ['type', 'amount', 'category', 'payment_source', 'payment_source_bank', 'remarks', 'date'],
+  recurring_transactions: ['type', 'frequency', 'interval_count', 'amount', 'description', 'next_run_date', 'is_active'],
+  recurring_rules: ['rule_type', 'frequency', 'interval_count', 'amount', 'description', 'next_run_date', 'is_active'],
+  savings: ['amount', 'bank', 'remarks', 'date']
+}
+
 const activeTracker = computed(() => props.trackers.find(tracker => tracker.id === props.activeTrackerId) ?? null)
 const activeMembers = computed(() => props.members.filter(member => member.trackerId === props.activeTrackerId))
-
-const currentMembership = computed(() => {
-  return activeMembers.value.find(member => member.email.toLowerCase() === props.currentUserEmail.toLowerCase()) ?? null
-})
-
+const currentMembership = computed(() => activeMembers.value.find(member => member.email.toLowerCase() === props.currentUserEmail.toLowerCase()) ?? null)
+const canManageMembers = computed(() => currentMembership.value?.role === 'owner' || currentMembership.value?.role === 'admin')
 const activityLogs = computed(() => props.activityLogs.filter(entry => entry.trackerId === props.activeTrackerId))
-const filteredActivityLogs = computed(() => {
-  return activityLogs.value.filter(entry => {
+const filteredActivityLogs = computed(() =>
+  activityLogs.value.filter(entry => {
     const activityDate = entry.occurredAt.slice(0, 10)
-
-    if (activityDateFrom.value && activityDate < activityDateFrom.value) {
-      return false
-    }
-
-    if (activityDateTo.value && activityDate > activityDateTo.value) {
-      return false
-    }
-
+    if (activityDateFrom.value && activityDate < activityDateFrom.value) return false
+    if (activityDateTo.value && activityDate > activityDateTo.value) return false
     return true
   })
-})
-
-const canManageMembers = computed(() => {
-  return currentMembership.value?.role === 'owner' || currentMembership.value?.role === 'admin'
-})
+)
 
 const memberCount = (trackerId: string) => props.members.filter(member => member.trackerId === trackerId).length
 
 const roleLabel = (trackerId: string) => {
-  const membership = props.members.find(
-    member => member.trackerId === trackerId && member.email.toLowerCase() === props.currentUserEmail.toLowerCase()
-  )
-
+  const membership = props.members.find(member => member.trackerId === trackerId && member.email.toLowerCase() === props.currentUserEmail.toLowerCase())
   return membership ? `Your role: ${membership.role}` : 'Shared tracker'
 }
 
@@ -373,28 +401,18 @@ const handleAddMember = () => {
 }
 
 const canRemoveMember = (member: TrackerMember) => {
-  if (!canManageMembers.value) {
-    return false
-  }
-
-  if (member.role === 'owner' && member.email.toLowerCase() === props.currentUserEmail.toLowerCase()) {
-    return false
-  }
-
+  if (!canManageMembers.value) return false
+  if (member.role === 'owner' && member.email.toLowerCase() === props.currentUserEmail.toLowerCase()) return false
   return true
 }
 
 const canDeleteTracker = (trackerId: string) => {
-  const membership = props.members.find(
-    member => member.trackerId === trackerId && member.email.toLowerCase() === props.currentUserEmail.toLowerCase()
-  )
-
+  const membership = props.members.find(member => member.trackerId === trackerId && member.email.toLowerCase() === props.currentUserEmail.toLowerCase())
   return membership?.role === 'owner'
 }
 
 const handleSwitchTracker = (event: Event) => {
-  const nextTrackerId = (event.target as HTMLSelectElement).value
-  emit('select-tracker', nextTrackerId)
+  emit('select-tracker', (event.target as HTMLSelectElement).value)
 }
 
 const clearActivityFilters = () => {
@@ -402,27 +420,8 @@ const clearActivityFilters = () => {
   activityDateTo.value = ''
 }
 
-const entityLabel = (entityType: BudgetAuditLog['entityType']) => {
-  if (entityType === 'tracker_members') return 'Members'
-  if (entityType === 'trackers') return 'Tracker'
-  if (entityType === 'expenses') return 'Expenses'
-  if (entityType === 'incomes') return 'Income'
-  if (entityType === 'credit_cards') return 'Credit cards'
-  if (entityType === 'credit_card_transactions') return 'Card activity'
-  if (entityType === 'recurring_transactions') return 'Recurring'
-  return 'Savings'
-}
-
-const entityEntryLabel = (entityType: BudgetAuditLog['entityType']) => {
-  if (entityType === 'tracker_members') return 'member'
-  if (entityType === 'trackers') return 'tracker'
-  if (entityType === 'expenses') return 'expense'
-  if (entityType === 'incomes') return 'income'
-  if (entityType === 'credit_cards') return 'credit card'
-  if (entityType === 'credit_card_transactions') return 'card activity'
-  if (entityType === 'recurring_transactions') return 'recurring transaction'
-  return 'savings'
-}
+const entityLabel = (entityType: BudgetAuditLog['entityType']) => entityLabels[entityType] ?? 'Record'
+const entityEntryLabel = (entityType: BudgetAuditLog['entityType']) => entityEntryLabels[entityType] ?? 'record'
 
 const actionLabel = (action: BudgetAuditLog['action']) => {
   if (action === 'insert') return 'Created'
@@ -430,72 +429,55 @@ const actionLabel = (action: BudgetAuditLog['action']) => {
   return 'Deleted'
 }
 
-const actionTone = (action: BudgetAuditLog['action']) => {
-  return action === 'delete' ? 'tag-danger' : action === 'insert' ? 'tag-success' : ''
+const actionTone = (action: BudgetAuditLog['action']) => (action === 'delete' ? 'tag-danger' : action === 'insert' ? 'tag-success' : '')
+
+const fieldLabel = (field: string) => {
+  const specialLabels: Record<string, string> = {
+    is_personal: 'Personal tracker',
+    account_type: 'Account type',
+    account_group: 'Account group',
+    currency_code: 'Currency',
+    is_active: 'Active',
+    to_account_id: 'Destination account',
+    from_account_id: 'Source account',
+    account_id: 'Linked account',
+    transfer_type: 'Transfer type',
+    rule_type: 'Rule type',
+    limit_amount: 'Credit limit',
+    statement_day: 'Statement day',
+    due_day: 'Due day',
+    interval_count: 'Interval',
+    next_run_date: 'Next run',
+    payment_source: 'Legacy payment source',
+    payment_source_bank: 'Legacy savings bank',
+    payment_source_card_id: 'Legacy credit card'
+  }
+
+  return specialLabels[field] ?? field.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+}
+
+const isEmptyAuditValue = (value: unknown) => value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
+const areAuditValuesEqual = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right)
+
+const formatAuditValue = (field: string, value: unknown) => {
+  if (isEmptyAuditValue(value)) return 'empty'
+
+  if (field === 'amount' || field === 'limit_amount') {
+    const numericValue = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(numericValue) ? formatCurrency(numericValue) : String(value)
+  }
+
+  if ((field === 'date' || field === 'next_run_date') && typeof value === 'string') {
+    return formatDate(value)
+  }
+
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  return String(value)
 }
 
 type ActivityDetail = {
   label: string
   text: string
-  tone: 'insert' | 'update' | 'delete'
-}
-
-const trackedFieldsByEntity: Record<BudgetAuditLog['entityType'], string[]> = {
-  trackers: ['name', 'description', 'is_personal'],
-  tracker_members: ['email', 'role', 'status'],
-  expenses: ['amount', 'category', 'payment_source', 'payment_source_bank', 'payment_source_card_id', 'remarks', 'date'],
-  incomes: ['amount', 'source', 'remarks', 'date'],
-  savings: ['amount', 'bank', 'remarks', 'date'],
-  credit_cards: ['name', 'issuer', 'limit_amount', 'statement_day', 'due_day'],
-  credit_card_transactions: ['type', 'amount', 'category', 'payment_source', 'payment_source_bank', 'remarks', 'date'],
-  recurring_transactions: ['type', 'frequency', 'interval_count', 'amount', 'description', 'next_run_date', 'is_active']
-}
-
-const fieldLabel = (field: string) => {
-  if (field === 'is_personal') return 'Personal tracker'
-  if (field === 'payment_source') return 'Paid from'
-  if (field === 'payment_source_bank') return 'Savings bank'
-  if (field === 'payment_source_card_id') return 'Credit card'
-  if (field === 'limit_amount') return 'Credit limit'
-  if (field === 'statement_day') return 'Statement day'
-  if (field === 'due_day') return 'Due day'
-  if (field === 'interval_count') return 'Interval'
-  if (field === 'next_run_date') return 'Next run'
-  if (field === 'is_active') return 'Active'
-  if (field === 'tracker_id') return 'Tracker'
-  return field
-    .split('_')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
-const isEmptyAuditValue = (value: unknown) => {
-  return value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
-}
-
-const areAuditValuesEqual = (left: unknown, right: unknown) => {
-  return JSON.stringify(left) === JSON.stringify(right)
-}
-
-const formatAuditValue = (field: string, value: unknown) => {
-  if (isEmptyAuditValue(value)) {
-    return 'empty'
-  }
-
-  if (field === 'amount') {
-    const numericValue = typeof value === 'number' ? value : Number(value)
-    return Number.isFinite(numericValue) ? formatCurrency(numericValue) : String(value)
-  }
-
-  if (field === 'date' && typeof value === 'string') {
-    return formatDate(value)
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No'
-  }
-
-  return String(value)
 }
 
 const activityDetails = (entry: BudgetAuditLog): ActivityDetail[] => {
@@ -508,153 +490,125 @@ const activityDetails = (entry: BudgetAuditLog): ActivityDetail[] => {
     const newValue = newData[field]
 
     if (entry.action === 'insert') {
-      if (isEmptyAuditValue(newValue)) {
-        return details
-      }
-
-      details.push({
-          label: fieldLabel(field),
-          text: `Added ${formatAuditValue(field, newValue)}`,
-          tone: 'insert' as const
-      })
+      if (isEmptyAuditValue(newValue)) return details
+      details.push({ label: fieldLabel(field), text: `Added ${formatAuditValue(field, newValue)}` })
       return details
     }
 
     if (entry.action === 'delete') {
-      if (isEmptyAuditValue(oldValue)) {
-        return details
-      }
-
-      details.push({
-          label: fieldLabel(field),
-          text: `Removed ${formatAuditValue(field, oldValue)}`,
-          tone: 'delete' as const
-      })
+      if (isEmptyAuditValue(oldValue)) return details
+      details.push({ label: fieldLabel(field), text: `Removed ${formatAuditValue(field, oldValue)}` })
       return details
     }
 
-    if (areAuditValuesEqual(oldValue, newValue)) {
-      return details
-    }
+    if (areAuditValuesEqual(oldValue, newValue)) return details
 
     if (isEmptyAuditValue(oldValue) && !isEmptyAuditValue(newValue)) {
-      details.push({
-          label: fieldLabel(field),
-          text: `Added ${formatAuditValue(field, newValue)}`,
-          tone: 'insert' as const
-      })
+      details.push({ label: fieldLabel(field), text: `Added ${formatAuditValue(field, newValue)}` })
       return details
     }
 
     if (!isEmptyAuditValue(oldValue) && isEmptyAuditValue(newValue)) {
-      details.push({
-          label: fieldLabel(field),
-          text: `Removed ${formatAuditValue(field, oldValue)}`,
-          tone: 'delete' as const
-      })
+      details.push({ label: fieldLabel(field), text: `Removed ${formatAuditValue(field, oldValue)}` })
       return details
     }
 
-    details.push({
-      label: fieldLabel(field),
-      text: `${formatAuditValue(field, oldValue)} -> ${formatAuditValue(field, newValue)}`,
-      tone: 'update' as const
-    })
+    details.push({ label: fieldLabel(field), text: `${formatAuditValue(field, oldValue)} -> ${formatAuditValue(field, newValue)}` })
     return details
   }, [])
+}
+
+const activityActor = (entry: BudgetAuditLog) => {
+  if (entry.actorName?.trim()) return entry.actorName.trim()
+  if (props.currentUserId && props.currentUserName && entry.actorUserId === props.currentUserId) return props.currentUserName
+  if (entry.actorEmail?.trim()) return entry.actorEmail.trim()
+  return 'A user'
 }
 
 const activityTitle = (entry: BudgetAuditLog) => {
   const actor = activityActor(entry)
 
   if (entry.entityType === 'tracker_members') {
-    const targetEmail =
-      String(entry.newData?.email ?? entry.oldData?.email ?? '').trim() || 'a member'
+    const targetEmail = String(entry.newData?.email ?? entry.oldData?.email ?? '').trim() || 'a member'
     return `${actor} ${actionLabel(entry.action).toLowerCase()} ${targetEmail}`
   }
 
   if (entry.entityType === 'trackers') {
-    const trackerName =
-      String(entry.newData?.name ?? entry.oldData?.name ?? activeTracker.value?.name ?? 'this tracker').trim() || 'this tracker'
+    const trackerName = String(entry.newData?.name ?? entry.oldData?.name ?? activeTracker.value?.name ?? 'this tracker').trim() || 'this tracker'
     return `${actor} ${actionLabel(entry.action).toLowerCase()} ${trackerName}`
   }
 
-  return `${actor} ${actionLabel(entry.action).toLowerCase()} a ${entityEntryLabel(entry.entityType)} entry`
+  return `${actor} ${actionLabel(entry.action).toLowerCase()} a ${entityEntryLabel(entry.entityType)}`
 }
 
-const activityActor = (entry: BudgetAuditLog) => {
-  if (entry.actorName?.trim()) {
-    return entry.actorName.trim()
-  }
-
-  if (props.currentUserId && props.currentUserName && entry.actorUserId === props.currentUserId) {
-    return props.currentUserName
-  }
-
-  if (entry.actorEmail?.trim()) {
-    return entry.actorEmail.trim()
-  }
-
-  return 'A user'
-}
-
-const activityCopy = (entry: BudgetAuditLog) => {
+const summarizeKnownEntity = (entry: BudgetAuditLog) => {
   const currentData = entry.newData ?? entry.oldData ?? {}
 
-  if (entry.entityType === 'savings') {
-    const amount = currentData.amount
-    const bank = String(currentData.bank ?? '').trim()
-    const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
-
-    if (!isEmptyAuditValue(amount) || bank || date) {
-      const pieces = [
-        !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '',
-        bank ? `at ${bank}` : '',
-        date ? `on ${date}` : ''
-      ].filter(Boolean)
-
-      return pieces.join(' ')
-    }
+  if (entry.entityType === 'accounts') {
+    const name = String(currentData.name ?? '').trim()
+    const accountType = String(currentData.account_type ?? '').trim().replace(/_/g, ' ')
+    const institution = String(currentData.institution ?? '').trim()
+    return [name || 'Account', accountType ? `(${accountType})` : '', institution ? `at ${institution}` : ''].filter(Boolean).join(' ')
   }
 
   if (entry.entityType === 'expenses') {
     const amount = currentData.amount
     const category = String(currentData.category ?? '').trim()
-    const fundingSource = String(currentData.payment_source ?? '').trim()
-    const fundingSourceBank = String(currentData.payment_source_bank ?? '').trim()
+    const fromAccount = String(currentData.from_account_id ?? '').trim()
     const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
-
-    if (!isEmptyAuditValue(amount) || category || date) {
-      const pieces = [
-        category || 'Expense',
-        !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '',
-        fundingSource
-          ? fundingSourceBank && fundingSource === 'savings'
-            ? `from ${fundingSource} Â· ${fundingSourceBank}`
-            : `from ${fundingSource}`
-          : '',
-        date ? `on ${date}` : ''
-      ].filter(Boolean)
-
-      return pieces.join(' Â· ')
-    }
+    return [category || 'Expense', !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '', fromAccount ? `from account ${fromAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' ¡¤ ')
   }
 
   if (entry.entityType === 'incomes') {
     const amount = currentData.amount
     const source = String(currentData.source ?? '').trim()
+    const toAccount = String(currentData.to_account_id ?? '').trim()
     const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
-
-    if (!isEmptyAuditValue(amount) || source || date) {
-      const pieces = [
-        source || 'Income',
-        !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '',
-        date ? `on ${date}` : ''
-      ].filter(Boolean)
-
-      return pieces.join(' Â· ')
-    }
+    return [source || 'Income', !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '', toAccount ? `to account ${toAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' ¡¤ ')
   }
+
+  if (entry.entityType === 'transfers') {
+    const amount = currentData.amount
+    const fromAccount = String(currentData.from_account_id ?? '').trim()
+    const toAccount = String(currentData.to_account_id ?? '').trim()
+    const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
+    return [!isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : 'Transfer', fromAccount ? `from ${fromAccount}` : '', toAccount ? `to ${toAccount}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' ¡¤ ')
+  }
+
+  if (entry.entityType === 'account_adjustments') {
+    const amount = currentData.amount
+    const accountId = String(currentData.account_id ?? '').trim()
+    const reason = String(currentData.reason ?? '').trim().replace(/_/g, ' ')
+    return [!isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : 'Adjustment', accountId ? `for account ${accountId}` : '', reason ? `(${reason})` : ''].filter(Boolean).join(' ')
+  }
+
+  if (entry.entityType === 'credit_cards') {
+    const name = String(currentData.name ?? '').trim()
+    const issuer = String(currentData.issuer ?? '').trim()
+    const limit = currentData.limit_amount
+    return [name || 'Credit card', issuer ? `issued by ${issuer}` : '', !isEmptyAuditValue(limit) ? `limit ${formatAuditValue('limit_amount', limit)}` : ''].filter(Boolean).join(' ¡¤ ')
+  }
+
+  if (entry.entityType === 'recurring_rules' || entry.entityType === 'recurring_transactions') {
+    const description = String(currentData.description ?? '').trim()
+    const ruleType = String(currentData.rule_type ?? currentData.type ?? '').trim().replace(/_/g, ' ')
+    const amount = currentData.amount
+    return [description || 'Recurring rule', ruleType ? `(${ruleType})` : '', !isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : ''].filter(Boolean).join(' ')
+  }
+
+  if (entry.entityType === 'savings') {
+    const amount = currentData.amount
+    const bank = String(currentData.bank ?? '').trim()
+    const date = typeof currentData.date === 'string' ? formatDate(currentData.date) : ''
+    return [!isEmptyAuditValue(amount) ? formatAuditValue('amount', amount) : '', bank ? `at ${bank}` : '', date ? `on ${date}` : ''].filter(Boolean).join(' ')
+  }
+
+  return ''
+}
+
+const activityCopy = (entry: BudgetAuditLog) => {
+  const summary = summarizeKnownEntity(entry)
+  if (summary) return summary
 
   const details = activityDetails(entry)
   const leadDetail = details[0]
@@ -663,22 +617,13 @@ const activityCopy = (entry: BudgetAuditLog) => {
     return entry.action === 'update' ? 'Updated tracked values.' : 'Recorded this activity in the audit log.'
   }
 
-  if (details.length === 1) {
-    return `${leadDetail.label}: ${leadDetail.text}`
-  }
-
+  if (details.length === 1) return `${leadDetail.label}: ${leadDetail.text}`
   return `${leadDetail.label}: ${leadDetail.text} and ${details.length - 1} more change${details.length === 2 ? '' : 's'}.`
 }
 
 const handleDeleteTracker = (tracker: Tracker) => {
-  const confirmed = window.confirm(
-    `Delete "${tracker.name}"? This will remove the tracker and its related records for everyone who uses it.`
-  )
-
-  if (!confirmed) {
-    return
-  }
-
+  const confirmed = window.confirm(`Delete "${tracker.name}"? This will remove the tracker and its related records for everyone who uses it.`)
+  if (!confirmed) return
   emit('delete-tracker', tracker.id)
 }
 </script>

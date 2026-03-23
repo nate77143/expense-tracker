@@ -1,241 +1,178 @@
-<template>
+﻿<template>
   <section class="page-section">
     <div class="section-header">
       <div>
         <p class="eyebrow">Snapshot</p>
-        <h2 class="section-title">Cash flow at a glance</h2>
-        <p class="section-copy">
-          Stay on top of income, expenses, and available savings with a clean view of where money is moving right now.
-        </p>
+        <h2 class="section-title">Account-based financial overview</h2>
+        <p class="section-copy">See balances, net position, recent activity, and how income and spending are flowing through real accounts.</p>
       </div>
       <div class="section-meta">
         <span class="label-muted">Net position</span>
-        <strong :class="netBalance >= 0 ? 'amount-positive' : 'amount-negative'">
-          {{ formatCurrency(netBalance) }}
-        </strong>
+        <strong :class="netPosition >= 0 ? 'amount-positive' : 'amount-negative'">{{ formatCurrency(netPosition) }}</strong>
       </div>
     </div>
 
     <div class="stats-grid">
-      <article class="panel metric-card brand">
+      <article class="panel metric-card success">
         <div>
-          <p class="metric-label">Total income</p>
-          <strong class="metric-value">{{ formatCompactCurrency(totalIncome) }}</strong>
+          <p class="metric-label">Assets</p>
+          <strong class="metric-value">{{ formatCompactCurrency(assetTotal) }}</strong>
         </div>
-        <p class="metric-copy">All recorded earnings across salary, freelance work, and other sources.</p>
+        <p class="metric-copy">Money currently held across cash, banks, savings, and e-wallets.</p>
       </article>
 
       <article class="panel metric-card danger">
         <div>
-          <p class="metric-label">Total expenses</p>
-          <strong class="metric-value">{{ formatCompactCurrency(totalExpenses) }}</strong>
+          <p class="metric-label">Liabilities</p>
+          <strong class="metric-value">{{ formatCompactCurrency(liabilityTotal) }}</strong>
         </div>
-        <p class="metric-copy">Every outgoing transaction captured across your tracked categories.</p>
+        <p class="metric-copy">Outstanding balances still owed on credit cards and other liabilities.</p>
+      </article>
+
+      <article class="panel metric-card brand">
+        <div>
+          <p class="metric-label">Net position</p>
+          <strong class="metric-value">{{ formatCompactCurrency(netPosition) }}</strong>
+        </div>
+        <p class="metric-copy">Assets minus liabilities across the active tracker.</p>
       </article>
 
       <article class="panel metric-card neutral">
         <div>
-          <p class="metric-label">Net balance</p>
-          <strong class="metric-value">{{ formatCompactCurrency(netBalance) }}</strong>
+          <p class="metric-label">Cash on hand</p>
+          <strong class="metric-value">{{ formatCompactCurrency(cashOnHand) }}</strong>
         </div>
-        <p class="metric-copy">{{ balanceCopy }}</p>
-      </article>
-
-      <article class="panel metric-card success">
-        <div>
-          <p class="metric-label">Available savings</p>
-          <strong class="metric-value">{{ formatCompactCurrency(availableSavings) }}</strong>
-        </div>
-        <p class="metric-copy">Net savings after transfers in and withdrawals out have been recorded.</p>
-      </article>
-
-      <article class="panel metric-card neutral">
-        <div>
-          <p class="metric-label">Card balance</p>
-          <strong class="metric-value">{{ formatCompactCurrency(outstandingCardBalance) }}</strong>
-        </div>
-        <p class="metric-copy">Outstanding balance across all tracked credit cards waiting for payment.</p>
-      </article>
-    </div>
-
-    <div class="split-hero">
-      <article class="panel panel-strong hero-card">
-        <p class="eyebrow">Momentum</p>
-        <h2 class="section-title">Spend intentionally, not reactively</h2>
-        <p>
-          Your latest records show how current spending compares with income and how much liquidity you are still
-          protecting in savings.
-        </p>
-
-        <div class="hero-list">
-          <div class="hero-list-item">
-            <div>
-              <p class="label-muted">Expense coverage ratio</p>
-              <strong>{{ coverageRatio }}</strong>
-            </div>
-            <span class="tag" :class="netBalance >= 0 ? 'tag-success' : 'tag-danger'">
-              {{ netBalance >= 0 ? 'Healthy cash flow' : 'Review spending' }}
-            </span>
-          </div>
-
-          <div class="hero-list-item">
-            <div>
-              <p class="label-muted">Paid from savings</p>
-              <strong>{{ formatCurrency(savingsFundedExpenses) }}</strong>
-            </div>
-            <span class="tag" :class="savingsFundedExpenses > 0 ? 'tag-danger' : 'tag-success'">
-              {{ savingsFundedExpenses > 0 ? 'Savings used' : 'No savings used' }}
-            </span>
-          </div>
-
-          <div class="hero-list-item">
-            <div>
-              <p class="label-muted">Recent activity</p>
-              <strong>{{ recentActivityLabel }}</strong>
-            </div>
-            <span class="tag">{{ recentExpenses.length + recentIncomes.length }} entries</span>
-          </div>
-
-          <div class="hero-list-item">
-            <div>
-              <p class="label-muted">Savings movement</p>
-              <strong>{{ savingsMovementLabel }}</strong>
-            </div>
-            <span class="tag" :class="savingsMovementTone">
-              {{ savingsMovementDeltaLabel }}
-            </span>
-          </div>
-
-          <div class="hero-list-item">
-            <div>
-              <p class="label-muted">Credit utilization</p>
-              <strong>{{ creditUtilizationLabel }}</strong>
-            </div>
-            <span class="tag" :class="outstandingCardBalance > 0 ? 'tag-danger' : 'tag-success'">
-              {{ outstandingCardBalance > 0 ? 'Balance due' : 'No balance due' }}
-            </span>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-header">
-          <div>
-            <h3 class="card-title">Savings by bank</h3>
-            <p class="panel-copy">A quick look at how your recorded savings entries are distributed.</p>
-          </div>
-          <div class="panel-kpi">
-            <span>Recorded savings</span>
-            <strong class="amount-positive">{{ formatCurrency(totalRecordedSavings) }}</strong>
-          </div>
-        </div>
-
-        <div v-if="bankBreakdown.length === 0" class="empty-state">
-          <div class="empty-state-title">No savings accounts yet</div>
-          <p class="empty-state-copy">Add your first savings record to see account distribution here.</p>
-        </div>
-
-        <div v-else class="bank-list">
-          <div v-for="bank in bankBreakdown" :key="bank.name" class="bank-item">
-            <div style="display: flex; gap: 0.9rem; align-items: center;">
-              <div class="bank-mark">{{ bank.initials }}</div>
-              <div>
-                <div class="bank-name">{{ bank.name }}</div>
-                <div class="bank-copy">{{ bank.entries }} record{{ bank.entries === 1 ? '' : 's' }}</div>
-              </div>
-            </div>
-            <strong class="saving-amount" :class="bank.amount >= 0 ? 'amount-positive' : 'amount-negative'">
-              {{ formatCurrency(bank.amount) }}
-            </strong>
-          </div>
-        </div>
+        <p class="metric-copy">Combined balance of accounts marked as cash.</p>
       </article>
     </div>
 
     <div class="content-grid">
-      <TransactionList
-        title="Recent expenses"
-        :items="recentExpenses"
-        :credit-card-names="creditCardNameMap"
-        :current-user-id="currentUserId"
-        :current-user-name="currentUserName"
-        :show-delete="false"
-      />
+      <section class="panel panel-strong hero-card">
+        <p class="eyebrow">Flow</p>
+        <h2 class="section-title">Money is finally tied to real locations</h2>
+        <p>Income raises destination accounts, expenses reduce source accounts, and transfers explain how money moved between them.</p>
+
+        <div class="hero-list">
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">This month income</p>
+              <strong>{{ formatCurrency(currentMonthIncome) }}</strong>
+            </div>
+            <span class="tag tag-success">{{ incomeSourcesThisMonth }} source{{ incomeSourcesThisMonth === 1 ? '' : 's' }}</span>
+          </div>
+
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">This month expenses</p>
+              <strong>{{ formatCurrency(currentMonthExpensesTotal) }}</strong>
+            </div>
+            <span class="tag" :class="currentMonthExpensesTotal > currentMonthIncome ? 'tag-danger' : 'tag-success'">{{ currentMonthExpensesTotal > currentMonthIncome ? 'Review spend' : 'Within inflow' }}</span>
+          </div>
+
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">Transfers this month</p>
+              <strong>{{ formatCurrency(currentMonthTransfersTotal) }}</strong>
+            </div>
+            <span class="tag">{{ currentMonthTransfers.length }} movement{{ currentMonthTransfers.length === 1 ? '' : 's' }}</span>
+          </div>
+
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">Largest account</p>
+              <strong>{{ topAccount?.name ?? 'No account yet' }}</strong>
+            </div>
+            <span class="tag">{{ topAccount ? formatCurrency(displayBalance(topAccount)) : '--' }}</span>
+          </div>
+        </div>
+      </section>
 
       <section class="panel">
         <div class="panel-header">
           <div>
-            <h3 class="card-title">Income pulse</h3>
-            <p class="panel-copy">A compact overview of this month’s inflow without duplicating the full income ledger.</p>
-          </div>
-          <div class="panel-kpi">
-            <span>This month</span>
-            <strong class="amount-positive">{{ formatCurrency(currentMonthIncomeTotal) }}</strong>
+            <h3 class="card-title">Top account balances</h3>
+            <p class="panel-copy">The largest balances in the tracker, ordered across assets and liabilities.</p>
           </div>
         </div>
 
-        <div v-if="incomeSourceBreakdown.length === 0" class="empty-state">
-          <div class="empty-state-title">No income records yet</div>
-          <p class="empty-state-copy">Add income entries to see source trends and monthly inflow here.</p>
+        <div v-if="sortedAccounts.length === 0" class="empty-state">
+          <div class="empty-state-title">No accounts yet</div>
+          <p class="empty-state-copy">Create accounts to see balance distribution here.</p>
+        </div>
+
+        <div v-else class="bank-list">
+          <div v-for="account in sortedAccounts.slice(0, 6)" :key="account.id" class="bank-item">
+            <div style="display: flex; gap: 0.9rem; align-items: center;">
+              <div class="bank-mark">{{ initials(account.name) }}</div>
+              <div>
+                <div class="bank-name">{{ account.name }}</div>
+                <div class="bank-copy">{{ account.accountType.replace(/_/g, ' ') }}</div>
+              </div>
+            </div>
+            <strong :class="account.accountGroup === 'liability' ? 'amount-negative' : 'amount-positive'">{{ formatCurrency(displayBalance(account)) }}</strong>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="content-grid">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="card-title">Recent activity</h3>
+            <p class="panel-copy">A unified look at recent incomes, expenses, and transfers.</p>
+          </div>
+        </div>
+
+        <div v-if="recentActivity.length === 0" class="empty-state">
+          <div class="empty-state-title">No activity yet</div>
+          <p class="empty-state-copy">Tracker activity will appear here once entries are recorded.</p>
+        </div>
+
+        <div v-else class="stack list-scroll-shell">
+          <article v-for="item in recentActivity" :key="item.id" class="transaction-item">
+            <div class="transaction-main">
+              <div class="transaction-title">{{ item.title }}</div>
+              <div class="transaction-meta">{{ formatDate(item.date) }} · {{ item.subtitle }}</div>
+            </div>
+            <strong
+              class="transaction-amount"
+              :class="item.tone === 'positive' ? 'amount-positive' : item.tone === 'negative' ? 'amount-negative' : ''"
+            >
+              {{ item.tone === 'neutral' ? formatCurrency(item.amount) : formatCurrency(Math.abs(item.amount)) }}
+            </strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="card-title">Income by source</h3>
+            <p class="panel-copy">The biggest income sources for the current month.</p>
+          </div>
+        </div>
+
+        <div v-if="incomeBreakdown.length === 0" class="empty-state">
+          <div class="empty-state-title">No income this month</div>
+          <p class="empty-state-copy">Monthly source totals will appear here after income is recorded.</p>
         </div>
 
         <div v-else class="stack">
-          <div class="summary-grid">
-            <div class="summary-card">
-              <span class="label-muted">Entries this month</span>
-              <strong>{{ currentMonthIncomeEntries }}</strong>
-            </div>
-            <div class="summary-card">
-              <span class="label-muted">Sources this month</span>
-              <strong>{{ currentMonthIncomeSourceCount }}</strong>
-            </div>
-            <div class="summary-card">
-              <span class="label-muted">Latest income</span>
-              <strong>{{ latestIncomeLabel }}</strong>
-            </div>
-          </div>
-
-          <article v-for="source in incomeSourceBreakdown.slice(0, 4)" :key="source.name" class="report-row">
+          <article v-for="item in incomeBreakdown" :key="item.name" class="report-row">
             <div>
-              <div class="report-row-title">{{ source.name }}</div>
-              <div class="report-row-copy">{{ source.entries }} entr{{ source.entries === 1 ? 'y' : 'ies' }} this month</div>
+              <div class="report-row-title">{{ item.name }}</div>
+              <div class="report-row-copy">{{ item.entries }} entr{{ item.entries === 1 ? 'y' : 'ies' }}</div>
             </div>
-            <strong class="amount-positive">{{ formatCurrency(source.total) }}</strong>
+            <strong class="amount-positive">{{ formatCurrency(item.total) }}</strong>
           </article>
         </div>
       </section>
     </div>
 
-    <section class="page-section">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Trends</p>
-          <h2 class="section-title">Expense movement over time</h2>
-          <p class="section-copy">Switch between daily, weekly, and monthly views to see spending momentum clearly.</p>
-        </div>
-        <div class="segmented" role="tablist" aria-label="Dashboard trend range">
-          <button
-            v-for="view in views"
-            :key="view"
-            class="segment-button"
-            :class="{ active: dashboardActiveView === view }"
-            type="button"
-            @click="dashboardActiveView = view"
-          >
-            {{ capitalize(view) }}
-          </button>
-        </div>
-      </div>
-
-      <div class="content-grid">
-        <ExpenseTrendChart :view="dashboardActiveView" :points="dashboardTrendPoints" />
-        <SavingsTrendChart :points="dashboardSavingsTrendPoints" />
-      </div>
-    </section>
-
     <div class="content-grid">
-      <ReportSection title="This month's expenses" :items="currentMonthExpenses" />
-      <CategoryChart title="Current category mix" :items="currentMonthExpenses" />
+      <ExpenseTrendChart :view="dashboardActiveView" :points="dashboardTrendPoints" />
+      <CategoryChart title="Expense by Category" :items="currentMonthExpenses" />
     </div>
   </section>
 </template>
@@ -244,161 +181,37 @@
 import { computed, ref } from 'vue'
 import CategoryChart from '../components/CategoryChart.vue'
 import ExpenseTrendChart from '../components/ExpenseTrendChart.vue'
-import ReportSection from '../components/ReportSection.vue'
-import SavingsTrendChart from '../components/SavingsTrendChart.vue'
-import TransactionList from '../components/TransactionList.vue'
+import { getAssetTotal, getDisplayBalance, getLiabilityTotal, getNetPosition, sortAccountsForDisplay } from '../lib/accountBalances'
 import { formatCompactCurrency, formatCurrency, formatDate } from '../lib/formatters'
-import { buildSavingsBankSummaries } from '../lib/savingsBanks'
-import type { CreditCard, CreditCardTransaction, Expense, Income, Saving } from '../types'
+import type { Account, CreditCard, Expense, Income, Transfer, AccountAdjustment } from '../types'
 
 const props = defineProps<{
-  expenses: Expense[]
+  accounts: Account[]
+  accountBalances: Record<string, number>
   incomes: Income[]
-  savings: Saving[]
+  expenses: Expense[]
+  transfers: Transfer[]
+  accountAdjustments: AccountAdjustment[]
   creditCards: CreditCard[]
-  creditCardTransactions: CreditCardTransaction[]
-  creditCardNameMap: Record<string, string>
-  currentUserId: string
-  currentUserName: string
 }>()
 
 const dashboardActiveView = ref<'daily' | 'weekly' | 'monthly'>('monthly')
-const views: Array<'daily' | 'weekly' | 'monthly'> = ['daily', 'weekly', 'monthly']
+const assetTotal = computed(() => getAssetTotal(props.accounts, props.accountBalances))
+const liabilityTotal = computed(() => getLiabilityTotal(props.accounts, props.accountBalances))
+const netPosition = computed(() => getNetPosition(props.accounts, props.accountBalances))
+const sortedAccounts = computed(() => sortAccountsForDisplay(props.accounts.filter(account => account.isActive), props.accountBalances))
+const topAccount = computed(() => sortedAccounts.value[0] ?? null)
+const cashOnHand = computed(() => props.accounts.filter(account => account.accountType === 'cash').reduce((sum, account) => sum + (props.accountBalances[account.id] ?? 0), 0))
+const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+const currentMonthIncomes = computed(() => props.incomes.filter(income => income.date.startsWith(currentMonthKey)))
+const currentMonthExpenses = computed(() => props.expenses.filter(expense => expense.date.startsWith(currentMonthKey)))
+const currentMonthTransfers = computed(() => props.transfers.filter(transfer => transfer.date.startsWith(currentMonthKey)))
+const currentMonthIncome = computed(() => currentMonthIncomes.value.reduce((sum, income) => sum + income.amount, 0))
+const currentMonthExpensesTotal = computed(() => currentMonthExpenses.value.reduce((sum, expense) => sum + expense.amount, 0))
+const currentMonthTransfersTotal = computed(() => currentMonthTransfers.value.reduce((sum, transfer) => sum + transfer.amount, 0))
+const incomeSourcesThisMonth = computed(() => new Set(currentMonthIncomes.value.map(income => income.source?.trim() || 'General income')).size)
 
-const totalExpenses = computed(() => props.expenses.reduce((sum, expense) => sum + expense.amount, 0))
-const totalIncome = computed(() => props.incomes.reduce((sum, income) => sum + income.amount, 0))
-const incomeFundedExpenses = computed(() =>
-  props.expenses
-    .filter(expense => expense.fundingSource === 'income')
-    .reduce((sum, expense) => sum + expense.amount, 0)
-)
-const incomeFundedCardPayments = computed(() =>
-  props.creditCardTransactions
-    .filter(transaction => transaction.type === 'payment' && transaction.paymentSource === 'income')
-    .reduce((sum, transaction) => sum + transaction.amount, 0)
-)
-const incomeCommittedTotal = computed(() => incomeFundedExpenses.value + incomeFundedCardPayments.value)
-const savingsFundedExpenses = computed(() =>
-  props.expenses
-    .filter(expense => expense.fundingSource === 'savings')
-    .reduce((sum, expense) => sum + expense.amount, 0)
-)
-const netBalance = computed(() => totalIncome.value - incomeCommittedTotal.value)
-const totalRecordedSavings = computed(() => props.savings.reduce((sum, saving) => sum + saving.amount, 0))
-const availableSavings = computed(() => totalRecordedSavings.value)
-const outstandingCardBalance = computed(() =>
-  props.creditCardTransactions.reduce((sum, transaction) => sum + (transaction.type === 'charge' ? transaction.amount : -transaction.amount), 0)
-)
-const totalCardLimit = computed(() => props.creditCards.reduce((sum, card) => sum + card.limitAmount, 0))
-const creditUtilizationLabel = computed(() => {
-  if (totalCardLimit.value <= 0) {
-    return 'No cards tracked'
-  }
-
-  return `${Math.round((outstandingCardBalance.value / totalCardLimit.value) * 100)}% used`
-})
-
-const getMonthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-
-const currentMonthKey = computed(() => getMonthKey(new Date()))
-
-const previousMonthKey = computed(() => {
-  const date = new Date()
-  date.setMonth(date.getMonth() - 1)
-  return getMonthKey(date)
-})
-
-const currentMonthSavingsTotal = computed(() => {
-  return props.savings
-    .filter(saving => saving.date.startsWith(currentMonthKey.value))
-    .reduce((sum, saving) => sum + saving.amount, 0)
-})
-
-const previousMonthSavingsTotal = computed(() => {
-  return props.savings
-    .filter(saving => saving.date.startsWith(previousMonthKey.value))
-    .reduce((sum, saving) => sum + saving.amount, 0)
-})
-
-const savingsMovementDelta = computed(() => currentMonthSavingsTotal.value - previousMonthSavingsTotal.value)
-
-const savingsMovementLabel = computed(() => {
-  if (currentMonthSavingsTotal.value === 0 && previousMonthSavingsTotal.value === 0) {
-    return 'No savings entries yet'
-  }
-
-  return `${formatCurrency(currentMonthSavingsTotal.value)} saved this month`
-})
-
-const savingsMovementDeltaLabel = computed(() => {
-  if (currentMonthSavingsTotal.value === 0 && previousMonthSavingsTotal.value === 0) {
-    return 'Waiting for data'
-  }
-
-  if (savingsMovementDelta.value === 0) {
-    return 'Flat vs last month'
-  }
-
-  const direction = savingsMovementDelta.value > 0 ? '+' : '-'
-  return `${direction}${formatCurrency(Math.abs(savingsMovementDelta.value))} vs last month`
-})
-
-const savingsMovementTone = computed(() => {
-  if (currentMonthSavingsTotal.value === 0 && previousMonthSavingsTotal.value === 0) {
-    return ''
-  }
-
-  if (savingsMovementDelta.value > 0) {
-    return 'tag-success'
-  }
-
-  if (savingsMovementDelta.value < 0) {
-    return 'tag-danger'
-  }
-
-  return ''
-})
-
-const balanceCopy = computed(() => {
-  if (netBalance.value >= 0) {
-    return 'Income is covering income-funded transactions and card payments while savings stay separated.'
-  }
-
-  return 'Income-funded transactions and card payments are outpacing income, so it is a good time to review priorities.'
-})
-
-const coverageRatio = computed(() => {
-  if (totalIncome.value === 0) {
-    return '0%'
-  }
-
-  return `${Math.round((incomeCommittedTotal.value / totalIncome.value) * 100)}% of income`
-})
-
-const bankBreakdown = computed(() => {
-  return buildSavingsBankSummaries(props.savings)
-    .map(bank => ({
-      name: bank.name,
-      amount: bank.balance,
-      entries: bank.entries,
-      initials: bank.name
-        .split(/\s+/)
-        .slice(0, 2)
-        .map(part => part[0]?.toUpperCase() ?? '')
-        .join('')
-    }))
-    .sort((a, b) => b.amount - a.amount)
-})
-
-const recentExpenses = computed(() => props.expenses.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5))
-const recentIncomes = computed(() => props.incomes.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5))
-const currentMonthIncomes = computed(() => props.incomes.filter(income => income.date.startsWith(currentMonthKey.value)))
-const currentMonthIncomeTotal = computed(() => currentMonthIncomes.value.reduce((sum, income) => sum + income.amount, 0))
-const currentMonthIncomeEntries = computed(() => currentMonthIncomes.value.length)
-const currentMonthIncomeSourceCount = computed(() => {
-  return new Set(currentMonthIncomes.value.map(income => income.source?.trim() || 'General income')).size
-})
-const incomeSourceBreakdown = computed(() => {
+const incomeBreakdown = computed(() => {
   const grouped = currentMonthIncomes.value.reduce<Record<string, { total: number; entries: number }>>((acc, income) => {
     const source = income.source?.trim() || 'General income'
     acc[source] = acc[source] ?? { total: 0, entries: 0 }
@@ -408,28 +221,44 @@ const incomeSourceBreakdown = computed(() => {
   }, {})
 
   return Object.entries(grouped)
-    .map(([name, value]) => ({
-      name,
-      total: value.total,
-      entries: value.entries
-    }))
+    .map(([name, value]) => ({ name, total: value.total, entries: value.entries }))
     .sort((a, b) => b.total - a.total)
-})
-const latestIncomeLabel = computed(() => {
-  if (recentIncomes.value.length === 0) {
-    return 'No income yet'
-  }
-
-  return formatDate(recentIncomes.value[0].date)
+    .slice(0, 5)
 })
 
-const recentActivityLabel = computed(() => {
-  const dates = [...recentExpenses.value, ...recentIncomes.value].map(item => item.date).sort().reverse()
-  if (dates.length === 0) {
-    return 'No recent activity'
-  }
+const accountName = (accountId: string) => props.accounts.find(account => account.id === accountId)?.name ?? 'Unknown account'
+const displayBalance = (account: Account) => getDisplayBalance(account, props.accountBalances[account.id] ?? 0)
+const initials = (value: string) => value.split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() ?? '').join('')
 
-  return `Latest on ${dates[0]}`
+const recentActivity = computed(() => {
+  return [
+    ...props.incomes.map(income => ({
+      id: `income-${income.id}`,
+      date: income.date,
+      amount: income.amount,
+      tone: 'positive' as const,
+      title: income.source?.trim() || 'Income',
+      subtitle: `To ${accountName(income.toAccountId)}`
+    })),
+    ...props.expenses.map(expense => ({
+      id: `expense-${expense.id}`,
+      date: expense.date,
+      amount: -expense.amount,
+      tone: 'negative' as const,
+      title: expense.category,
+      subtitle: `From ${accountName(expense.fromAccountId)}`
+    })),
+    ...props.transfers.map(transfer => ({
+      id: `transfer-${transfer.id}`,
+      date: transfer.date,
+      amount: transfer.amount,
+      tone: 'neutral' as const,
+      title: `${accountName(transfer.fromAccountId)} -> ${accountName(transfer.toAccountId)}`,
+      subtitle: transfer.transferType.replace(/_/g, ' ')
+    }))
+  ]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+    .slice(0, 10)
 })
 
 const dashboardTrendPoints = computed(() => {
@@ -439,10 +268,7 @@ const dashboardTrendPoints = computed(() => {
       return acc
     }, {})
 
-    return Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-7)
-      .map(([date, total]) => ({ label: date.slice(5), value: total }))
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-7).map(([date, total]) => ({ label: date.slice(5), value: total }))
   }
 
   if (dashboardActiveView.value === 'weekly') {
@@ -457,10 +283,7 @@ const dashboardTrendPoints = computed(() => {
       return acc
     }, {})
 
-    return Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-8)
-      .map(([weekStart, total]) => ({ label: weekStart.slice(5), value: total }))
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-8).map(([weekStart, total]) => ({ label: weekStart.slice(5), value: total }))
   }
 
   const grouped = props.expenses.reduce<Record<string, number>>((acc, expense) => {
@@ -469,32 +292,6 @@ const dashboardTrendPoints = computed(() => {
     return acc
   }, {})
 
-  return Object.entries(grouped)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-6)
-    .map(([month, total]) => ({ label: month, value: total }))
+  return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([month, total]) => ({ label: month, value: total }))
 })
-
-const dashboardSavingsTrendPoints = computed(() => {
-  const groupedSavings = props.savings.reduce<Record<string, number>>((acc, saving) => {
-    const monthKey = saving.date.slice(0, 7)
-    acc[monthKey] = (acc[monthKey] ?? 0) + saving.amount
-    return acc
-  }, {})
-
-  const monthKeys = Object.keys(groupedSavings).sort((a, b) => a.localeCompare(b))
-
-  return monthKeys.slice(-6).map(month => ({
-    label: month,
-    value: groupedSavings[month] ?? 0
-  }))
-})
-
-const currentMonthExpenses = computed(() => {
-  const now = new Date()
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  return props.expenses.filter(expense => expense.date.startsWith(monthKey))
-})
-
-const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 </script>

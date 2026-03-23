@@ -1,36 +1,35 @@
-import { supabase } from '../lib/supabase'
+﻿import { supabase } from '../lib/supabase'
 import type {
+  Account,
+  AccountAdjustment,
   BudgetAuditLog,
   CreditCard,
-  CreditCardTransaction,
   Expense,
   Income,
-  RecurringTransaction,
-  Saving
+  RecurringRule,
+  Transfer
 } from '../types'
 
-type ExpenseRow = {
+type AccountRow = {
   id: string
-  tracker_id?: string
-  source_recurring_transaction_id?: string | null
-  source_recurring_run_date?: string | null
+  tracker_id: string
+  name: string
+  account_type: Account['accountType']
+  account_group: Account['accountGroup']
+  institution?: string | null
+  currency_code?: string | null
+  is_active?: boolean | null
+  sort_order?: number | null
+  created_at?: string | null
   created_by_name?: string | null
   created_by_user_id?: string | null
   created_by_email?: string | null
-  date: string
-  category: string
-  payment_source?: 'income' | 'savings' | 'credit_card' | null
-  payment_source_bank?: string | null
-  payment_source_card_id?: string | null
-  target_savings_bank?: string | null
-  amount: number
-  remarks: string
 }
 
 type IncomeRow = {
   id: string
   tracker_id?: string
-  source_recurring_transaction_id?: string | null
+  source_recurring_rule_id?: string | null
   source_recurring_run_date?: string | null
   created_by_name?: string | null
   created_by_user_id?: string | null
@@ -39,27 +38,62 @@ type IncomeRow = {
   amount: number
   remarks: string
   source?: string | null
+  to_account_id?: string | null
 }
 
-type SavingRow = {
+type ExpenseRow = {
   id: string
   tracker_id?: string
-  source_recurring_transaction_id?: string | null
+  source_recurring_rule_id?: string | null
   source_recurring_run_date?: string | null
   created_by_name?: string | null
   created_by_user_id?: string | null
   created_by_email?: string | null
-  bank: string
-  amount: number
-  remarks?: string | null
   date: string
-  source_expense_id?: string | null
-  source_credit_card_transaction_id?: string | null
+  category: string
+  merchant?: string | null
+  amount: number
+  remarks: string
+  from_account_id?: string | null
+}
+
+type TransferRow = {
+  id: string
+  tracker_id: string
+  source_recurring_rule_id?: string | null
+  source_recurring_run_date?: string | null
+  date: string
+  from_account_id: string
+  to_account_id: string
+  amount: number
+  transfer_type?: Transfer['transferType'] | null
+  remarks?: string | null
+  created_by_name?: string | null
+  created_by_user_id?: string | null
+  created_by_email?: string | null
+  created_at?: string | null
+}
+
+type AccountAdjustmentRow = {
+  id: string
+  tracker_id: string
+  source_recurring_rule_id?: string | null
+  source_recurring_run_date?: string | null
+  account_id: string
+  date: string
+  amount: number
+  reason: AccountAdjustment['reason']
+  remarks?: string | null
+  created_by_name?: string | null
+  created_by_user_id?: string | null
+  created_by_email?: string | null
+  created_at?: string | null
 }
 
 type CreditCardRow = {
   id: string
   tracker_id: string
+  account_id: string
   name: string
   issuer?: string | null
   limit_amount: number
@@ -68,32 +102,11 @@ type CreditCardRow = {
   created_at?: string | null
 }
 
-type CreditCardTransactionRow = {
+type RecurringRuleRow = {
   id: string
   tracker_id: string
-  source_recurring_transaction_id?: string | null
-  source_recurring_run_date?: string | null
-  created_by_name?: string | null
-  created_by_user_id?: string | null
-  created_by_email?: string | null
-  credit_card_id: string
-  expense_id?: string | null
-  date: string
-  type: CreditCardTransaction['type']
-  amount: number
-  merchant?: string | null
-  category?: string | null
-  payment_source?: CreditCardTransaction['paymentSource'] | null
-  payment_source_bank?: string | null
-  remarks?: string | null
-  created_at?: string | null
-}
-
-type RecurringTransactionRow = {
-  id: string
-  tracker_id: string
-  type: RecurringTransaction['type']
-  frequency: RecurringTransaction['frequency']
+  rule_type: RecurringRule['ruleType']
+  frequency: RecurringRule['frequency']
   interval_count: number
   start_date: string
   next_run_date: string
@@ -102,14 +115,13 @@ type RecurringTransactionRow = {
   amount: number
   description?: string | null
   remarks?: string | null
-  expense_category?: string | null
-  expense_funding_source?: RecurringTransaction['expenseFundingSource'] | null
-  expense_funding_source_bank?: string | null
-  expense_target_savings_bank?: string | null
   income_source?: string | null
-  savings_bank?: string | null
-  credit_card_id?: string | null
-  merchant?: string | null
+  income_to_account_id?: string | null
+  expense_category?: string | null
+  expense_merchant?: string | null
+  expense_from_account_id?: string | null
+  transfer_from_account_id?: string | null
+  transfer_to_account_id?: string | null
   created_at?: string | null
 }
 
@@ -127,29 +139,26 @@ type AuditLogRow = {
   occurred_at: string
 }
 
-const mapExpense = (row: ExpenseRow): Expense => ({
+const mapAccount = (row: AccountRow): Account => ({
   id: row.id,
-  trackerId: row.tracker_id ?? '',
-  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
-  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
+  trackerId: row.tracker_id,
+  name: row.name,
+  accountType: row.account_type,
+  accountGroup: row.account_group,
+  institution: row.institution ?? '',
+  currencyCode: row.currency_code ?? 'PHP',
+  isActive: row.is_active ?? true,
+  sortOrder: row.sort_order ?? 0,
+  createdAt: row.created_at ?? new Date().toISOString(),
   createdByName: row.created_by_name ?? null,
   createdByUserId: row.created_by_user_id ?? null,
-  createdByEmail: row.created_by_email ?? null,
-  date: row.date,
-  category: row.category,
-  fundingSource:
-    row.payment_source === 'savings' ? 'savings' : row.payment_source === 'credit_card' ? 'credit_card' : 'income',
-  fundingSourceBank: row.payment_source_bank ?? undefined,
-  fundingSourceCardId: row.payment_source_card_id ?? undefined,
-  targetSavingsBank: row.target_savings_bank ?? undefined,
-  amount: row.amount,
-  remarks: row.remarks
+  createdByEmail: row.created_by_email ?? null
 })
 
 const mapIncome = (row: IncomeRow): Income => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
-  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
+  sourceRecurringRuleId: row.source_recurring_rule_id ?? null,
   sourceRecurringRunDate: row.source_recurring_run_date ?? null,
   createdByName: row.created_by_name ?? null,
   createdByUserId: row.created_by_user_id ?? null,
@@ -157,28 +166,61 @@ const mapIncome = (row: IncomeRow): Income => ({
   date: row.date,
   amount: row.amount,
   remarks: row.remarks,
-  source: row.source ?? undefined
+  source: row.source ?? undefined,
+  toAccountId: row.to_account_id ?? ''
 })
 
-const mapSaving = (row: SavingRow): Saving => ({
+const mapExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
   trackerId: row.tracker_id ?? '',
-  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
+  sourceRecurringRuleId: row.source_recurring_rule_id ?? null,
   sourceRecurringRunDate: row.source_recurring_run_date ?? null,
   createdByName: row.created_by_name ?? null,
   createdByUserId: row.created_by_user_id ?? null,
   createdByEmail: row.created_by_email ?? null,
-  bank: row.bank,
-  amount: row.amount,
-  remarks: row.remarks ?? undefined,
   date: row.date,
-  sourceExpenseId: row.source_expense_id ?? null,
-  sourceCreditCardTransactionId: row.source_credit_card_transaction_id ?? null
+  category: row.category,
+  merchant: row.merchant ?? undefined,
+  fromAccountId: row.from_account_id ?? '',
+  amount: row.amount,
+  remarks: row.remarks
+})
+
+const mapTransfer = (row: TransferRow): Transfer => ({
+  id: row.id,
+  trackerId: row.tracker_id,
+  sourceRecurringRuleId: row.source_recurring_rule_id ?? null,
+  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
+  createdByName: row.created_by_name ?? null,
+  createdByUserId: row.created_by_user_id ?? null,
+  createdByEmail: row.created_by_email ?? null,
+  date: row.date,
+  fromAccountId: row.from_account_id,
+  toAccountId: row.to_account_id,
+  amount: row.amount,
+  transferType: row.transfer_type ?? 'general',
+  remarks: row.remarks ?? ''
+})
+
+const mapAccountAdjustment = (row: AccountAdjustmentRow): AccountAdjustment => ({
+  id: row.id,
+  trackerId: row.tracker_id,
+  sourceRecurringRuleId: row.source_recurring_rule_id ?? null,
+  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
+  createdByName: row.created_by_name ?? null,
+  createdByUserId: row.created_by_user_id ?? null,
+  createdByEmail: row.created_by_email ?? null,
+  accountId: row.account_id,
+  date: row.date,
+  amount: row.amount,
+  reason: row.reason,
+  remarks: row.remarks ?? ''
 })
 
 const mapCreditCard = (row: CreditCardRow): CreditCard => ({
   id: row.id,
   trackerId: row.tracker_id,
+  accountId: row.account_id,
   name: row.name,
   issuer: row.issuer ?? '',
   limitAmount: row.limit_amount,
@@ -187,31 +229,10 @@ const mapCreditCard = (row: CreditCardRow): CreditCard => ({
   createdAt: row.created_at ?? new Date().toISOString()
 })
 
-const mapCreditCardTransaction = (row: CreditCardTransactionRow): CreditCardTransaction => ({
+const mapRecurringRule = (row: RecurringRuleRow): RecurringRule => ({
   id: row.id,
   trackerId: row.tracker_id,
-  sourceRecurringTransactionId: row.source_recurring_transaction_id ?? null,
-  sourceRecurringRunDate: row.source_recurring_run_date ?? null,
-  createdByName: row.created_by_name ?? null,
-  createdByUserId: row.created_by_user_id ?? null,
-  createdByEmail: row.created_by_email ?? null,
-  creditCardId: row.credit_card_id,
-  expenseId: row.expense_id ?? null,
-  date: row.date,
-  type: row.type,
-  amount: row.amount,
-  merchant: row.merchant ?? undefined,
-  category: row.category ?? undefined,
-  paymentSource: row.payment_source ?? undefined,
-  paymentSourceBank: row.payment_source_bank ?? undefined,
-  remarks: row.remarks ?? undefined,
-  createdAt: row.created_at ?? new Date().toISOString()
-})
-
-const mapRecurringTransaction = (row: RecurringTransactionRow): RecurringTransaction => ({
-  id: row.id,
-  trackerId: row.tracker_id,
-  type: row.type,
+  ruleType: row.rule_type,
   frequency: row.frequency,
   intervalCount: row.interval_count,
   startDate: row.start_date,
@@ -221,14 +242,13 @@ const mapRecurringTransaction = (row: RecurringTransactionRow): RecurringTransac
   amount: row.amount,
   description: row.description ?? '',
   remarks: row.remarks ?? undefined,
-  expenseCategory: row.expense_category ?? undefined,
-  expenseFundingSource: row.expense_funding_source ?? undefined,
-  expenseFundingSourceBank: row.expense_funding_source_bank ?? undefined,
-  expenseTargetSavingsBank: row.expense_target_savings_bank ?? undefined,
   incomeSource: row.income_source ?? undefined,
-  savingsBank: row.savings_bank ?? undefined,
-  creditCardId: row.credit_card_id ?? undefined,
-  merchant: row.merchant ?? undefined,
+  incomeToAccountId: row.income_to_account_id ?? undefined,
+  expenseCategory: row.expense_category ?? undefined,
+  expenseMerchant: row.expense_merchant ?? undefined,
+  expenseFromAccountId: row.expense_from_account_id ?? undefined,
+  transferFromAccountId: row.transfer_from_account_id ?? undefined,
+  transferToAccountId: row.transfer_to_account_id ?? undefined,
   createdAt: row.created_at ?? new Date().toISOString()
 })
 
@@ -246,64 +266,39 @@ const mapAuditLog = (row: AuditLogRow): BudgetAuditLog => ({
   occurredAt: row.occurred_at
 })
 
-export async function fetchExpenses(trackerId: string) {
-  const { data, error } = await supabase
-    .from('expenses')
-    .select('*')
-    .eq('tracker_id', trackerId)
-    .order('date', { ascending: false })
-
-  return { data: (data as ExpenseRow[] | null)?.map(mapExpense) ?? null, error }
+export async function fetchAccounts(trackerId: string) {
+  const { data, error } = await supabase.from('accounts').select('*').eq('tracker_id', trackerId).order('sort_order', { ascending: true })
+  return { data: ((data as AccountRow[] | null) ?? []).map(mapAccount), error }
 }
 
 export async function fetchIncomes(trackerId: string) {
-  const { data, error } = await supabase
-    .from('incomes')
-    .select('*')
-    .eq('tracker_id', trackerId)
-    .order('date', { ascending: false })
-
-  return { data: (data as IncomeRow[] | null)?.map(mapIncome) ?? null, error }
+  const { data, error } = await supabase.from('incomes').select('*').eq('tracker_id', trackerId).not('to_account_id', 'is', null).order('date', { ascending: false })
+  return { data: ((data as IncomeRow[] | null) ?? []).map(mapIncome), error }
 }
 
-export async function fetchSavings(trackerId: string) {
-  const { data, error } = await supabase
-    .from('savings')
-    .select('*')
-    .eq('tracker_id', trackerId)
-    .order('date', { ascending: false })
+export async function fetchExpenses(trackerId: string) {
+  const { data, error } = await supabase.from('expenses').select('*').eq('tracker_id', trackerId).not('from_account_id', 'is', null).order('date', { ascending: false })
+  return { data: ((data as ExpenseRow[] | null) ?? []).map(mapExpense), error }
+}
 
-  return { data: (data as SavingRow[] | null)?.map(mapSaving) ?? null, error }
+export async function fetchTransfers(trackerId: string) {
+  const { data, error } = await supabase.from('transfers').select('*').eq('tracker_id', trackerId).order('date', { ascending: false })
+  return { data: ((data as TransferRow[] | null) ?? []).map(mapTransfer), error }
+}
+
+export async function fetchAccountAdjustments(trackerId: string) {
+  const { data, error } = await supabase.from('account_adjustments').select('*').eq('tracker_id', trackerId).order('date', { ascending: false })
+  return { data: ((data as AccountAdjustmentRow[] | null) ?? []).map(mapAccountAdjustment), error }
 }
 
 export async function fetchCreditCards(trackerId: string) {
-  const { data, error } = await supabase
-    .from('credit_cards')
-    .select('*')
-    .eq('tracker_id', trackerId)
-    .order('created_at', { ascending: true })
-
-  return { data: (data as CreditCardRow[] | null)?.map(mapCreditCard) ?? null, error }
+  const { data, error } = await supabase.from('credit_cards').select('*').eq('tracker_id', trackerId).not('account_id', 'is', null).order('created_at', { ascending: true })
+  return { data: ((data as CreditCardRow[] | null) ?? []).map(mapCreditCard), error }
 }
 
-export async function fetchCreditCardTransactions(trackerId: string) {
-  const { data, error } = await supabase
-    .from('credit_card_transactions')
-    .select('*')
-    .eq('tracker_id', trackerId)
-    .order('date', { ascending: false })
-
-  return { data: (data as CreditCardTransactionRow[] | null)?.map(mapCreditCardTransaction) ?? null, error }
-}
-
-export async function fetchRecurringTransactions(trackerId: string) {
-  const { data, error } = await supabase
-    .from('recurring_transactions')
-    .select('*')
-    .eq('tracker_id', trackerId)
-    .order('next_run_date', { ascending: true })
-
-  return { data: (data as RecurringTransactionRow[] | null)?.map(mapRecurringTransaction) ?? null, error }
+export async function fetchRecurringRules(trackerId: string) {
+  const { data, error } = await supabase.from('recurring_rules').select('*').eq('tracker_id', trackerId).order('next_run_date', { ascending: true })
+  return { data: ((data as RecurringRuleRow[] | null) ?? []).map(mapRecurringRule), error }
 }
 
 export async function fetchAuditLogs(trackerId: string, limit = 20) {
@@ -314,177 +309,170 @@ export async function fetchAuditLogs(trackerId: string, limit = 20) {
     .order('occurred_at', { ascending: false })
     .limit(limit)
 
-  return { data: (data as AuditLogRow[] | null)?.map(mapAuditLog) ?? null, error }
+  return { data: ((data as AuditLogRow[] | null) ?? []).map(mapAuditLog), error }
 }
 
-export async function insertExpense(expense: Omit<Expense, 'id'>) {
-  const payload: Record<string, unknown> = {
-    tracker_id: expense.trackerId,
-    source_recurring_transaction_id: expense.sourceRecurringTransactionId,
-    source_recurring_run_date: expense.sourceRecurringRunDate,
-    created_by_name: expense.createdByName,
-    created_by_user_id: expense.createdByUserId,
-    created_by_email: expense.createdByEmail,
-    date: expense.date,
-    category: expense.category,
-    payment_source: expense.fundingSource,
-    amount: expense.amount,
-    remarks: expense.remarks
-  }
-
-  if (expense.fundingSource === 'savings' && expense.fundingSourceBank) {
-    payload.payment_source_bank = expense.fundingSourceBank
-  }
-
-  if (expense.fundingSource === 'credit_card' && expense.fundingSourceCardId) {
-    payload.payment_source_card_id = expense.fundingSourceCardId
-  }
-
-  if (expense.targetSavingsBank) {
-    payload.target_savings_bank = expense.targetSavingsBank
-  }
-
+export async function insertAccount(account: Omit<Account, 'id' | 'createdAt'>) {
   const { data, error } = await supabase
-    .from('expenses')
-    .insert([payload])
-    .select('*')
-    .single()
-
-  return { data: data ? mapExpense(data as ExpenseRow) : null, error }
-}
-
-export async function insertIncome(income: Omit<Income, 'id'>) {
-  const { data, error } = await supabase
-    .from('incomes')
+    .from('accounts')
     .insert([
       {
-        tracker_id: income.trackerId,
-        source_recurring_transaction_id: income.sourceRecurringTransactionId,
-        source_recurring_run_date: income.sourceRecurringRunDate,
-        created_by_name: income.createdByName,
-        created_by_user_id: income.createdByUserId,
-        created_by_email: income.createdByEmail,
-        date: income.date,
-        amount: income.amount,
-        source: income.source,
-        remarks: income.remarks
+        tracker_id: account.trackerId,
+        name: account.name,
+        account_type: account.accountType,
+        account_group: account.accountGroup,
+        institution: account.institution,
+        currency_code: account.currencyCode,
+        is_active: account.isActive,
+        sort_order: account.sortOrder,
+        created_by_name: account.createdByName,
+        created_by_user_id: account.createdByUserId,
+        created_by_email: account.createdByEmail
       }
     ])
     .select('*')
     .single()
+
+  return { data: data ? mapAccount(data as AccountRow) : null, error }
+}
+
+export async function createAccountWithOpeningBalance(payload: Omit<Account, 'id' | 'createdAt'> & { openingBalance: number; openingBalanceDate?: string; openingBalanceRemarks?: string }) {
+  const { data, error } = await supabase.rpc('create_account_with_opening_balance', {
+    p_tracker_id: payload.trackerId,
+    p_name: payload.name,
+    p_account_type: payload.accountType,
+    p_account_group: payload.accountGroup,
+    p_institution: payload.institution,
+    p_currency_code: payload.currencyCode,
+    p_is_active: payload.isActive,
+    p_sort_order: payload.sortOrder,
+    p_opening_balance: payload.openingBalance,
+    p_opening_balance_date: payload.openingBalanceDate ?? new Date().toISOString().split('T')[0],
+    p_opening_balance_remarks: payload.openingBalanceRemarks ?? 'Opening balance'
+  })
+
+  return { data: data ? mapAccount(data as AccountRow) : null, error }
+}
+
+export async function insertIncome(income: Omit<Income, 'id'>) {
+  const { data, error } = await supabase.rpc('record_income', {
+    p_tracker_id: income.trackerId,
+    p_date: income.date,
+    p_amount: income.amount,
+    p_source: income.source ?? null,
+    p_remarks: income.remarks,
+    p_to_account_id: income.toAccountId,
+    p_source_recurring_rule_id: income.sourceRecurringRuleId ?? null,
+    p_source_recurring_run_date: income.sourceRecurringRunDate ?? null
+  })
 
   return { data: data ? mapIncome(data as IncomeRow) : null, error }
 }
 
-export async function insertSaving(saving: Omit<Saving, 'id'>) {
-  const { data, error } = await supabase
-    .from('savings')
-    .insert([
-      {
-        tracker_id: saving.trackerId,
-        source_recurring_transaction_id: saving.sourceRecurringTransactionId,
-        source_recurring_run_date: saving.sourceRecurringRunDate,
-        created_by_name: saving.createdByName,
-        created_by_user_id: saving.createdByUserId,
-        created_by_email: saving.createdByEmail,
-        date: saving.date,
-        bank: saving.bank,
-        amount: saving.amount,
-        remarks: saving.remarks,
-        source_expense_id: saving.sourceExpenseId,
-        source_credit_card_transaction_id: saving.sourceCreditCardTransactionId
-      }
-    ])
-    .select('*')
-    .single()
+export async function insertExpense(expense: Omit<Expense, 'id'>) {
+  const { data, error } = await supabase.rpc('record_expense', {
+    p_tracker_id: expense.trackerId,
+    p_date: expense.date,
+    p_amount: expense.amount,
+    p_category: expense.category,
+    p_merchant: expense.merchant ?? null,
+    p_remarks: expense.remarks,
+    p_from_account_id: expense.fromAccountId,
+    p_source_recurring_rule_id: expense.sourceRecurringRuleId ?? null,
+    p_source_recurring_run_date: expense.sourceRecurringRunDate ?? null
+  })
 
-  return { data: data ? mapSaving(data as SavingRow) : null, error }
+  return { data: data ? mapExpense(data as ExpenseRow) : null, error }
 }
 
-export async function insertCreditCard(card: Omit<CreditCard, 'id' | 'createdAt'>) {
-  const { data, error } = await supabase
-    .from('credit_cards')
-    .insert([
-      {
-        tracker_id: card.trackerId,
-        name: card.name,
-        issuer: card.issuer,
-        limit_amount: card.limitAmount,
-        statement_day: card.statementDay,
-        due_day: card.dueDay
-      }
-    ])
-    .select('*')
-    .single()
+export async function insertTransfer(transfer: Omit<Transfer, 'id'>) {
+  const { data, error } = await supabase.rpc('record_transfer', {
+    p_tracker_id: transfer.trackerId,
+    p_date: transfer.date,
+    p_amount: transfer.amount,
+    p_from_account_id: transfer.fromAccountId,
+    p_to_account_id: transfer.toAccountId,
+    p_transfer_type: transfer.transferType,
+    p_remarks: transfer.remarks,
+    p_source_recurring_rule_id: transfer.sourceRecurringRuleId ?? null,
+    p_source_recurring_run_date: transfer.sourceRecurringRunDate ?? null
+  })
+
+  return { data: data ? mapTransfer(data as TransferRow) : null, error }
+}
+
+export async function insertAccountAdjustment(adjustment: Omit<AccountAdjustment, 'id'>) {
+  const { data, error } = await supabase.rpc('record_account_adjustment', {
+    p_tracker_id: adjustment.trackerId,
+    p_account_id: adjustment.accountId,
+    p_date: adjustment.date,
+    p_amount: adjustment.amount,
+    p_reason: adjustment.reason,
+    p_remarks: adjustment.remarks,
+    p_source_recurring_rule_id: adjustment.sourceRecurringRuleId ?? null,
+    p_source_recurring_run_date: adjustment.sourceRecurringRunDate ?? null
+  })
+
+  return { data: data ? mapAccountAdjustment(data as AccountAdjustmentRow) : null, error }
+}
+
+export async function createCreditCardWithAccount(payload: {
+  trackerId: string
+  name: string
+  issuer: string
+  limitAmount: number
+  statementDay: number
+  dueDay: number
+  openingBalance: number
+}) {
+  const { data, error } = await supabase.rpc('create_credit_card_with_account', {
+    p_tracker_id: payload.trackerId,
+    p_name: payload.name,
+    p_issuer: payload.issuer,
+    p_limit_amount: payload.limitAmount,
+    p_statement_day: payload.statementDay,
+    p_due_day: payload.dueDay,
+    p_opening_balance: payload.openingBalance
+  })
 
   return { data: data ? mapCreditCard(data as CreditCardRow) : null, error }
 }
 
-export async function insertCreditCardTransaction(transaction: Omit<CreditCardTransaction, 'id' | 'createdAt'>) {
+export async function insertRecurringRule(rule: Omit<RecurringRule, 'id' | 'createdAt'>) {
   const { data, error } = await supabase
-    .from('credit_card_transactions')
+    .from('recurring_rules')
     .insert([
       {
-        tracker_id: transaction.trackerId,
-        source_recurring_transaction_id: transaction.sourceRecurringTransactionId,
-        source_recurring_run_date: transaction.sourceRecurringRunDate,
-        created_by_name: transaction.createdByName,
-        created_by_user_id: transaction.createdByUserId,
-        created_by_email: transaction.createdByEmail,
-        credit_card_id: transaction.creditCardId,
-        expense_id: transaction.expenseId,
-        date: transaction.date,
-        type: transaction.type,
-        amount: transaction.amount,
-        merchant: transaction.merchant,
-        category: transaction.category,
-        payment_source: transaction.paymentSource,
-        payment_source_bank: transaction.paymentSourceBank,
-        remarks: transaction.remarks
+        tracker_id: rule.trackerId,
+        rule_type: rule.ruleType,
+        frequency: rule.frequency,
+        interval_count: rule.intervalCount,
+        start_date: rule.startDate,
+        next_run_date: rule.nextRunDate,
+        end_date: rule.endDate,
+        is_active: rule.isActive,
+        amount: rule.amount,
+        description: rule.description,
+        remarks: rule.remarks,
+        income_source: rule.incomeSource,
+        income_to_account_id: rule.incomeToAccountId,
+        expense_category: rule.expenseCategory,
+        expense_merchant: rule.expenseMerchant,
+        expense_from_account_id: rule.expenseFromAccountId,
+        transfer_from_account_id: rule.transferFromAccountId,
+        transfer_to_account_id: rule.transferToAccountId
       }
     ])
     .select('*')
     .single()
 
-  return { data: data ? mapCreditCardTransaction(data as CreditCardTransactionRow) : null, error }
+  return { data: data ? mapRecurringRule(data as RecurringRuleRow) : null, error }
 }
 
-export async function insertRecurringTransaction(transaction: Omit<RecurringTransaction, 'id' | 'createdAt'>) {
-  const { data, error } = await supabase
-    .from('recurring_transactions')
-    .insert([
-      {
-        tracker_id: transaction.trackerId,
-        type: transaction.type,
-        frequency: transaction.frequency,
-        interval_count: transaction.intervalCount,
-        start_date: transaction.startDate,
-        next_run_date: transaction.nextRunDate,
-        end_date: transaction.endDate,
-        is_active: transaction.isActive,
-        amount: transaction.amount,
-        description: transaction.description,
-        remarks: transaction.remarks,
-        expense_category: transaction.expenseCategory,
-        expense_funding_source: transaction.expenseFundingSource,
-        expense_funding_source_bank: transaction.expenseFundingSourceBank,
-        expense_target_savings_bank: transaction.expenseTargetSavingsBank,
-        income_source: transaction.incomeSource,
-        savings_bank: transaction.savingsBank,
-        credit_card_id: transaction.creditCardId,
-        merchant: transaction.merchant
-      }
-    ])
-    .select('*')
-    .single()
-
-  return { data: data ? mapRecurringTransaction(data as RecurringTransactionRow) : null, error }
-}
-
-export async function updateRecurringTransaction(id: string, updates: Partial<RecurringTransaction>) {
+export async function updateRecurringRule(id: string, updates: Partial<RecurringRule>) {
   const payload: Record<string, unknown> = {}
 
-  if (updates.type !== undefined) payload.type = updates.type
+  if (updates.ruleType !== undefined) payload.rule_type = updates.ruleType
   if (updates.frequency !== undefined) payload.frequency = updates.frequency
   if (updates.intervalCount !== undefined) payload.interval_count = updates.intervalCount
   if (updates.startDate !== undefined) payload.start_date = updates.startDate
@@ -494,27 +482,20 @@ export async function updateRecurringTransaction(id: string, updates: Partial<Re
   if (updates.amount !== undefined) payload.amount = updates.amount
   if (updates.description !== undefined) payload.description = updates.description
   if (updates.remarks !== undefined) payload.remarks = updates.remarks
-  if (updates.expenseCategory !== undefined) payload.expense_category = updates.expenseCategory
-  if (updates.expenseFundingSource !== undefined) payload.expense_funding_source = updates.expenseFundingSource
-  if (updates.expenseFundingSourceBank !== undefined) payload.expense_funding_source_bank = updates.expenseFundingSourceBank
-  if (updates.expenseTargetSavingsBank !== undefined) payload.expense_target_savings_bank = updates.expenseTargetSavingsBank
   if (updates.incomeSource !== undefined) payload.income_source = updates.incomeSource
-  if (updates.savingsBank !== undefined) payload.savings_bank = updates.savingsBank
-  if (updates.creditCardId !== undefined) payload.credit_card_id = updates.creditCardId
-  if (updates.merchant !== undefined) payload.merchant = updates.merchant
+  if (updates.incomeToAccountId !== undefined) payload.income_to_account_id = updates.incomeToAccountId
+  if (updates.expenseCategory !== undefined) payload.expense_category = updates.expenseCategory
+  if (updates.expenseMerchant !== undefined) payload.expense_merchant = updates.expenseMerchant
+  if (updates.expenseFromAccountId !== undefined) payload.expense_from_account_id = updates.expenseFromAccountId
+  if (updates.transferFromAccountId !== undefined) payload.transfer_from_account_id = updates.transferFromAccountId
+  if (updates.transferToAccountId !== undefined) payload.transfer_to_account_id = updates.transferToAccountId
 
-  const { data, error } = await supabase
-    .from('recurring_transactions')
-    .update(payload)
-    .eq('id', id)
-    .select('*')
-    .single()
-
-  return { data: data ? mapRecurringTransaction(data as RecurringTransactionRow) : null, error }
+  const { data, error } = await supabase.from('recurring_rules').update(payload).eq('id', id).select('*').single()
+  return { data: data ? mapRecurringRule(data as RecurringRuleRow) : null, error }
 }
 
-export async function deleteExpense(id: string) {
-  const { data, error } = await supabase.from('expenses').delete().eq('id', id)
+export async function deleteAccount(id: string) {
+  const { data, error } = await supabase.from('accounts').delete().eq('id', id)
   return { data, error }
 }
 
@@ -523,35 +504,30 @@ export async function deleteIncome(id: string) {
   return { data, error }
 }
 
-export async function deleteSaving(id: string) {
-  const { data, error } = await supabase.from('savings').delete().eq('id', id)
+export async function deleteExpense(id: string) {
+  const { data, error } = await supabase.from('expenses').delete().eq('id', id)
   return { data, error }
 }
 
-export async function deleteCreditCard(id: string) {
-  const { data, error } = await supabase.from('credit_cards').delete().eq('id', id)
+export async function deleteTransfer(id: string) {
+  const { data, error } = await supabase.from('transfers').delete().eq('id', id)
   return { data, error }
 }
 
-export async function deleteCreditCardWithRelated(id: string) {
-  const { data, error } = await supabase.rpc('delete_credit_card_with_related', {
+export async function deleteAccountAdjustment(id: string) {
+  const { data, error } = await supabase.from('account_adjustments').delete().eq('id', id)
+  return { data, error }
+}
+
+export async function deleteCreditCardWithAccount(id: string) {
+  const { data, error } = await supabase.rpc('delete_credit_card_with_account', {
     target_credit_card_id: id
   })
 
   return { data, error }
 }
 
-export async function deleteCreditCardTransaction(id: string) {
-  const { data, error } = await supabase.from('credit_card_transactions').delete().eq('id', id)
-  return { data, error }
-}
-
-export async function deleteCreditCardTransactionsByExpenseId(expenseId: string) {
-  const { data, error } = await supabase.from('credit_card_transactions').delete().eq('expense_id', expenseId)
-  return { data, error }
-}
-
-export async function deleteRecurringTransaction(id: string) {
-  const { data, error } = await supabase.from('recurring_transactions').delete().eq('id', id)
+export async function deleteRecurringRule(id: string) {
+  const { data, error } = await supabase.from('recurring_rules').delete().eq('id', id)
   return { data, error }
 }
