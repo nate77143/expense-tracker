@@ -18,7 +18,7 @@
       <p class="empty-state-copy">Entries will appear here once you start tracking activity.</p>
     </div>
 
-    <div v-else class="stack list-scroll-shell">
+    <div v-else class="stack" :class="scrollable ? 'list-scroll-shell' : 'list-flow-shell'">
       <article v-for="item in sortedItems" :key="item.id" class="transaction-item">
         <div class="transaction-main">
           <div class="transaction-title">{{ itemLabel(item) }}</div>
@@ -31,9 +31,13 @@
             {{
               item.fundingSource === 'savings'
                 ? item.fundingSourceBank
-                  ? `savings · ${item.fundingSourceBank}`
+                  ? `savings via ${item.fundingSourceBank}`
                   : 'savings'
-                : 'income'
+                : item.fundingSource === 'credit_card'
+                  ? item.fundingSourceCardId
+                    ? `credit card via ${creditCardNames[item.fundingSourceCardId] ?? 'selected card'}`
+                    : 'credit card'
+                  : 'income'
             }}
           </div>
           <div v-if="item.remarks" class="transaction-meta">{{ item.remarks }}</div>
@@ -66,8 +70,10 @@ import type { Expense, Income } from '../types'
 const props = defineProps<{
   title: string
   items: (Expense | Income)[]
+  creditCardNames?: Record<string, string>
   isIncome?: boolean
   showDelete?: boolean
+  scrollable?: boolean
 }>()
 
 defineEmits<{
@@ -75,6 +81,8 @@ defineEmits<{
 }>()
 
 const showDelete = computed(() => props.showDelete ?? true)
+const creditCardNames = computed(() => props.creditCardNames ?? {})
+const scrollable = computed(() => props.scrollable ?? true)
 
 const sortedItems = computed(() => {
   return props.items.slice().sort((a, b) => {
@@ -83,7 +91,7 @@ const sortedItems = computed(() => {
       return byDate
     }
 
-    return b.id.localeCompare(a.id)
+    return 0
   })
 })
 

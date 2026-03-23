@@ -39,14 +39,55 @@
           </button>
         </div>
 
-        <div class="account-chip">
-          <div class="account-chip-meta">
-            <div class="account-chip-label">Signed in</div>
-            <div class="account-chip-value">{{ userEmail }}</div>
+        <div class="topbar-utility-group">
+          <div ref="accountMenuRef" class="menu-anchor">
+            <button
+              type="button"
+              class="utility-chip utility-chip-account"
+              :class="{ active: currentPage === 'settings' || currentPage === 'trackers' || accountMenuOpen }"
+              :aria-expanded="accountMenuOpen ? 'true' : 'false'"
+              @click="accountMenuOpen = !accountMenuOpen"
+            >
+              <div class="utility-chip-meta">
+                <div class="utility-chip-label">Account</div>
+                <div class="utility-chip-value">{{ userEmail }}</div>
+              </div>
+              <span class="utility-chip-caret">{{ accountMenuOpen ? '^' : 'v' }}</span>
+            </button>
+
+            <div v-if="accountMenuOpen" class="dropdown-panel dropdown-panel-right">
+              <div class="dropdown-section-title">Workspace</div>
+
+              <button
+                v-for="tracker in trackers"
+                :key="tracker.id"
+                type="button"
+                class="dropdown-item"
+                :class="{ active: tracker.id === activeTrackerId }"
+                @click="handleSelectTracker(tracker.id)"
+              >
+                <span>{{ tracker.name }}</span>
+                <small>{{ tracker.id === activeTrackerId ? 'Current workspace' : 'Switch workspace' }}</small>
+              </button>
+
+              <button type="button" class="dropdown-item dropdown-item-strong" @click="handleNavigate('trackers')">
+                <span>Manage trackers</span>
+                <small>Sharing and members</small>
+              </button>
+
+              <div class="dropdown-section-title">Account</div>
+
+              <button v-if="isAdmin" type="button" class="dropdown-item" @click="handleNavigate('settings')">
+                <span>Admin settings</span>
+                <small>User access and controls</small>
+              </button>
+
+              <button type="button" class="dropdown-item dropdown-item-danger" @click="handleLogout">
+                <span>Sign out</span>
+                <small>End this session</small>
+              </button>
+            </div>
           </div>
-          <button type="button" class="btn btn-secondary" @click="handleLogout">
-            Sign out
-          </button>
         </div>
       </div>
     </div>
@@ -54,49 +95,93 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import type { Tracker } from '../types'
 
-type PageId = 'dashboard' | 'expenses' | 'income' | 'reports' | 'savings' | 'trackers' | 'settings'
+type PageId =
+  | 'dashboard'
+  | 'expenses'
+  | 'income'
+  | 'savings'
+  | 'cards'
+  | 'recurring'
+  | 'reports'
+  | 'trackers'
+  | 'settings'
 
 const props = defineProps<{
   currentPage: PageId
   userEmail: string
   isAdmin: boolean
+  trackers: Tracker[]
+  activeTrackerId: string
 }>()
 
 const emit = defineEmits<{
   navigate: [page: PageId]
   logout: []
+  'select-tracker': [trackerId: string]
 }>()
 
 const mobileMenuOpen = ref(false)
+const accountMenuOpen = ref(false)
+const accountMenuRef = ref<HTMLElement | null>(null)
 
 const items = computed(() => {
   return [
     { id: 'dashboard', label: 'Dashboard', copy: 'Overview' },
-    { id: 'expenses', label: 'Money moves', copy: 'Outgoing' },
-    { id: 'income', label: 'Income', copy: 'Incoming' },
-    { id: 'savings', label: 'Savings', copy: 'Accounts' },
-    { id: 'reports', label: 'Reports', copy: 'Insights' },
-    { id: 'trackers', label: 'Trackers', copy: 'Shared' },
-    ...(props.isAdmin ? [{ id: 'settings', label: 'Settings', copy: 'Admin' }] : [])
+    { id: 'expenses', label: 'Transactions', copy: 'Spending' },
+    { id: 'income', label: 'Income', copy: 'Inflow' },
+    { id: 'savings', label: 'Savings', copy: 'Ledger' },
+    { id: 'cards', label: 'Cards', copy: 'Credit' },
+    { id: 'recurring', label: 'Automation', copy: 'Recurring' },
+    { id: 'reports', label: 'Reports', copy: 'Insights' }
   ] as { id: PageId; label: string; copy: string }[]
 })
 
+const closeMenus = () => {
+  accountMenuOpen.value = false
+}
+
 const handleNavigate = (page: PageId) => {
   mobileMenuOpen.value = false
+  closeMenus()
   emit('navigate', page)
+}
+
+const handleSelectTracker = (trackerId: string) => {
+  mobileMenuOpen.value = false
+  accountMenuOpen.value = false
+  emit('select-tracker', trackerId)
 }
 
 const handleLogout = () => {
   mobileMenuOpen.value = false
+  closeMenus()
   emit('logout')
 }
+
+const handleDocumentClick = (event: MouseEvent) => {
+  const target = event.target as Node | null
+
+  if (accountMenuOpen.value && accountMenuRef.value && target && !accountMenuRef.value.contains(target)) {
+    accountMenuOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', handleDocumentClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', handleDocumentClick)
+})
 
 watch(
   () => props.currentPage,
   () => {
     mobileMenuOpen.value = false
+    closeMenus()
   }
 )
 </script>

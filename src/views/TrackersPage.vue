@@ -405,6 +405,9 @@ const entityLabel = (entityType: BudgetAuditLog['entityType']) => {
   if (entityType === 'trackers') return 'Tracker'
   if (entityType === 'expenses') return 'Expenses'
   if (entityType === 'incomes') return 'Income'
+  if (entityType === 'credit_cards') return 'Credit cards'
+  if (entityType === 'credit_card_transactions') return 'Card activity'
+  if (entityType === 'recurring_transactions') return 'Recurring'
   return 'Savings'
 }
 
@@ -427,15 +430,25 @@ type ActivityDetail = {
 const trackedFieldsByEntity: Record<BudgetAuditLog['entityType'], string[]> = {
   trackers: ['name', 'description', 'is_personal'],
   tracker_members: ['email', 'role', 'status'],
-  expenses: ['amount', 'category', 'payment_source', 'payment_source_bank', 'remarks', 'date'],
+  expenses: ['amount', 'category', 'payment_source', 'payment_source_bank', 'payment_source_card_id', 'remarks', 'date'],
   incomes: ['amount', 'source', 'remarks', 'date'],
-  savings: ['amount', 'bank', 'remarks', 'date']
+  savings: ['amount', 'bank', 'remarks', 'date'],
+  credit_cards: ['name', 'issuer', 'limit_amount', 'statement_day', 'due_day'],
+  credit_card_transactions: ['type', 'amount', 'category', 'payment_source', 'payment_source_bank', 'remarks', 'date'],
+  recurring_transactions: ['type', 'frequency', 'interval_count', 'amount', 'description', 'next_run_date', 'is_active']
 }
 
 const fieldLabel = (field: string) => {
   if (field === 'is_personal') return 'Personal tracker'
   if (field === 'payment_source') return 'Paid from'
   if (field === 'payment_source_bank') return 'Savings bank'
+  if (field === 'payment_source_card_id') return 'Credit card'
+  if (field === 'limit_amount') return 'Credit limit'
+  if (field === 'statement_day') return 'Statement day'
+  if (field === 'due_day') return 'Due day'
+  if (field === 'interval_count') return 'Interval'
+  if (field === 'next_run_date') return 'Next run'
+  if (field === 'is_active') return 'Active'
   if (field === 'tracker_id') return 'Tracker'
   return field
     .split('_')

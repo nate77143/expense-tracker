@@ -48,6 +48,14 @@
         </div>
         <p class="metric-copy">Net savings after transfers in and withdrawals out have been recorded.</p>
       </article>
+
+      <article class="panel metric-card neutral">
+        <div>
+          <p class="metric-label">Card balance</p>
+          <strong class="metric-value">{{ formatCompactCurrency(outstandingCardBalance) }}</strong>
+        </div>
+        <p class="metric-copy">Outstanding balance across all tracked credit cards waiting for payment.</p>
+      </article>
     </div>
 
     <div class="split-hero">
@@ -97,6 +105,16 @@
               {{ savingsMovementDeltaLabel }}
             </span>
           </div>
+
+          <div class="hero-list-item">
+            <div>
+              <p class="label-muted">Credit utilization</p>
+              <strong>{{ creditUtilizationLabel }}</strong>
+            </div>
+            <span class="tag" :class="outstandingCardBalance > 0 ? 'tag-danger' : 'tag-success'">
+              {{ outstandingCardBalance > 0 ? 'Balance due' : 'No balance due' }}
+            </span>
+          </div>
         </div>
       </article>
 
@@ -135,8 +153,50 @@
     </div>
 
     <div class="content-grid">
-      <TransactionList title="Recent expenses" :items="recentExpenses" :show-delete="false" />
-      <TransactionList title="Recent income" :items="recentIncomes" :is-income="true" :show-delete="false" />
+      <TransactionList title="Recent expenses" :items="recentExpenses" :credit-card-names="creditCardNameMap" :show-delete="false" />
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="card-title">Income pulse</h3>
+            <p class="panel-copy">A compact overview of this month’s inflow without duplicating the full income ledger.</p>
+          </div>
+          <div class="panel-kpi">
+            <span>This month</span>
+            <strong class="amount-positive">{{ formatCurrency(currentMonthIncomeTotal) }}</strong>
+          </div>
+        </div>
+
+        <div v-if="incomeSourceBreakdown.length === 0" class="empty-state">
+          <div class="empty-state-title">No income records yet</div>
+          <p class="empty-state-copy">Add income entries to see source trends and monthly inflow here.</p>
+        </div>
+
+        <div v-else class="stack">
+          <div class="summary-grid">
+            <div class="summary-card">
+              <span class="label-muted">Entries this month</span>
+              <strong>{{ currentMonthIncomeEntries }}</strong>
+            </div>
+            <div class="summary-card">
+              <span class="label-muted">Sources this month</span>
+              <strong>{{ currentMonthIncomeSourceCount }}</strong>
+            </div>
+            <div class="summary-card">
+              <span class="label-muted">Latest income</span>
+              <strong>{{ latestIncomeLabel }}</strong>
+            </div>
+          </div>
+
+          <article v-for="source in incomeSourceBreakdown.slice(0, 4)" :key="source.name" class="report-row">
+            <div>
+              <div class="report-row-title">{{ source.name }}</div>
+              <div class="report-row-copy">{{ source.entries }} entr{{ source.entries === 1 ? 'y' : 'ies' }} this month</div>
+            </div>
+            <strong class="amount-positive">{{ formatCurrency(source.total) }}</strong>
+          </article>
+        </div>
+      </section>
     </div>
 
     <section class="page-section">
@@ -180,13 +240,17 @@ import ExpenseTrendChart from '../components/ExpenseTrendChart.vue'
 import ReportSection from '../components/ReportSection.vue'
 import SavingsTrendChart from '../components/SavingsTrendChart.vue'
 import TransactionList from '../components/TransactionList.vue'
-import { formatCompactCurrency, formatCurrency } from '../lib/formatters'
-import type { Expense, Income, Saving } from '../types'
+import { formatCompactCurrency, formatCurrency, formatDate } from '../lib/formatters'
+import { buildSavingsBankSummaries } from '../lib/savingsBanks'
+import type { CreditCard, CreditCardTransaction, Expense, Income, Saving } from '../types'
 
 const props = defineProps<{
   expenses: Expense[]
   incomes: Income[]
   savings: Saving[]
+  creditCards: CreditCard[]
+  creditCardTransactions: CreditCardTransaction[]
+  creditCardNameMap: Record<string, string>
 }>()
 
 const dashboardActiveView = ref<'daily' | 'weekly' | 'monthly'>('monthly')
@@ -196,17 +260,34 @@ const totalExpenses = computed(() => props.expenses.reduce((sum, expense) => sum
 const totalIncome = computed(() => props.incomes.reduce((sum, income) => sum + income.amount, 0))
 const incomeFundedExpenses = computed(() =>
   props.expenses
-    .filter(expense => expense.fundingSource !== 'savings')
+    .filter(expense => expense.fundingSource === 'income')
     .reduce((sum, expense) => sum + expense.amount, 0)
 )
+const incomeFundedCardPayments = computed(() =>
+  props.creditCardTransactions
+    .filter(transaction => transaction.type === 'payment' && transaction.paymentSource === 'income')
+    .reduce((sum, transaction) => sum + transaction.amount, 0)
+)
+const incomeCommittedTotal = computed(() => incomeFundedExpenses.value + incomeFundedCardPayments.value)
 const savingsFundedExpenses = computed(() =>
   props.expenses
     .filter(expense => expense.fundingSource === 'savings')
     .reduce((sum, expense) => sum + expense.amount, 0)
 )
-const netBalance = computed(() => totalIncome.value - incomeFundedExpenses.value)
+const netBalance = computed(() => totalIncome.value - incomeCommittedTotal.value)
 const totalRecordedSavings = computed(() => props.savings.reduce((sum, saving) => sum + saving.amount, 0))
 const availableSavings = computed(() => totalRecordedSavings.value)
+const outstandingCardBalance = computed(() =>
+  props.creditCardTransactions.reduce((sum, transaction) => sum + (transaction.type === 'charge' ? transaction.amount : -transaction.amount), 0)
+)
+const totalCardLimit = computed(() => props.creditCards.reduce((sum, card) => sum + card.limitAmount, 0))
+const creditUtilizationLabel = computed(() => {
+  if (totalCardLimit.value <= 0) {
+    return 'No cards tracked'
+  }
+
+  return `${Math.round((outstandingCardBalance.value / totalCardLimit.value) * 100)}% used`
+})
 
 const getMonthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
@@ -271,10 +352,10 @@ const savingsMovementTone = computed(() => {
 
 const balanceCopy = computed(() => {
   if (netBalance.value >= 0) {
-    return 'Income is covering income-funded spending while savings stay separated.'
+    return 'Income is covering income-funded transactions and card payments while savings stay separated.'
   }
 
-  return 'Income-funded spending is outpacing income, so it is a good time to review priorities.'
+  return 'Income-funded transactions and card payments are outpacing income, so it is a good time to review priorities.'
 })
 
 const coverageRatio = computed(() => {
@@ -282,24 +363,16 @@ const coverageRatio = computed(() => {
     return '0%'
   }
 
-  return `${Math.round((incomeFundedExpenses.value / totalIncome.value) * 100)}% of income`
+  return `${Math.round((incomeCommittedTotal.value / totalIncome.value) * 100)}% of income`
 })
 
 const bankBreakdown = computed(() => {
-  const grouped = props.savings.reduce<Record<string, { amount: number; entries: number }>>((acc, saving) => {
-    const key = saving.bank.trim() || 'Unassigned'
-    acc[key] = acc[key] ?? { amount: 0, entries: 0 }
-    acc[key].amount += saving.amount
-    acc[key].entries += 1
-    return acc
-  }, {})
-
-  return Object.entries(grouped)
-    .map(([name, value]) => ({
-      name,
-      amount: value.amount,
-      entries: value.entries,
-      initials: name
+  return buildSavingsBankSummaries(props.savings)
+    .map(bank => ({
+      name: bank.name,
+      amount: bank.balance,
+      entries: bank.entries,
+      initials: bank.name
         .split(/\s+/)
         .slice(0, 2)
         .map(part => part[0]?.toUpperCase() ?? '')
@@ -310,6 +383,36 @@ const bankBreakdown = computed(() => {
 
 const recentExpenses = computed(() => props.expenses.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5))
 const recentIncomes = computed(() => props.incomes.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5))
+const currentMonthIncomes = computed(() => props.incomes.filter(income => income.date.startsWith(currentMonthKey.value)))
+const currentMonthIncomeTotal = computed(() => currentMonthIncomes.value.reduce((sum, income) => sum + income.amount, 0))
+const currentMonthIncomeEntries = computed(() => currentMonthIncomes.value.length)
+const currentMonthIncomeSourceCount = computed(() => {
+  return new Set(currentMonthIncomes.value.map(income => income.source?.trim() || 'General income')).size
+})
+const incomeSourceBreakdown = computed(() => {
+  const grouped = currentMonthIncomes.value.reduce<Record<string, { total: number; entries: number }>>((acc, income) => {
+    const source = income.source?.trim() || 'General income'
+    acc[source] = acc[source] ?? { total: 0, entries: 0 }
+    acc[source].total += income.amount
+    acc[source].entries += 1
+    return acc
+  }, {})
+
+  return Object.entries(grouped)
+    .map(([name, value]) => ({
+      name,
+      total: value.total,
+      entries: value.entries
+    }))
+    .sort((a, b) => b.total - a.total)
+})
+const latestIncomeLabel = computed(() => {
+  if (recentIncomes.value.length === 0) {
+    return 'No income yet'
+  }
+
+  return formatDate(recentIncomes.value[0].date)
+})
 
 const recentActivityLabel = computed(() => {
   const dates = [...recentExpenses.value, ...recentIncomes.value].map(item => item.date).sort().reverse()

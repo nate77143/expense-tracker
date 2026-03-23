@@ -1,12 +1,12 @@
 <template>
   <section class="panel panel-strong">
-    <div class="panel-header">
-      <div>
-        <h3 class="card-title">Add money movement</h3>
-        <p class="panel-copy">Record an outgoing expense or a transfer into savings with the right source and context.</p>
+      <div class="panel-header">
+        <div>
+        <h3 class="card-title">Add transaction</h3>
+        <p class="panel-copy">Record an outgoing expense or a savings transfer with the right source and context.</p>
+        </div>
+      <span class="tag">Transaction</span>
       </div>
-      <span class="tag">Movement</span>
-    </div>
 
     <form class="form-shell" @submit.prevent="submitForm">
       <div class="field-grid">
@@ -64,12 +64,15 @@
         <select id="expense-funding-source" v-model="form.fundingSource" class="form-select" :disabled="form.category === 'Savings'">
           <option value="income">Income</option>
           <option value="savings">Savings</option>
+          <option value="credit_card">Credit card</option>
         </select>
         <span class="field-help">
           {{
             form.category === 'Savings'
               ? `Savings transfers are treated as money moving out of income and into a savings bank. Available income: ${formatCurrency(availableIncomeBalance)}.`
-              : `Choose where this expense was funded from. New expenses default to income. Available income: ${formatCurrency(availableIncomeBalance)}.`
+              : form.fundingSource === 'credit_card'
+                ? 'Choose which card funded this purchase so the outstanding balance stays in sync. Card payments are recorded from the Cards section.'
+                : `Choose where this expense was funded from. New expenses default to income. Available income: ${formatCurrency(availableIncomeBalance)}.`
           }}
         </span>
       </div>
@@ -93,7 +96,7 @@
           {{
             availableSavingsBanks.length === 0
               ? 'Add at least one savings record first before using the Savings category as a transfer.'
-              : 'Saving this movement will also create a matching savings record for the selected bank.'
+              : 'Saving this transaction will also create a matching savings record for the selected bank.'
           }}
         </span>
       </div>
@@ -124,6 +127,25 @@
         </span>
       </div>
 
+      <div v-if="form.fundingSource === 'credit_card' && form.category !== 'Savings'" class="form-group">
+        <label class="form-label" for="expense-funding-card">Credit card</label>
+        <select id="expense-funding-card" v-model="form.fundingSourceCardId" class="form-select" :disabled="availableCreditCards.length === 0">
+          <option value="">{{ availableCreditCards.length === 0 ? 'No credit cards available' : 'Select a credit card' }}</option>
+          <option v-for="card in availableCreditCards" :key="card.id" :value="card.id">
+            {{ `${card.name} (${formatCurrency(card.availableCredit)} available)` }}
+          </option>
+        </select>
+        <span class="field-help">
+          {{
+            availableCreditCards.length === 0
+              ? 'Add a credit card first before using it as a payment source.'
+              : form.fundingSourceCardId
+                ? `Outstanding balance: ${formatCurrency(getCreditCardOutstandingBalance(form.fundingSourceCardId))}. Available credit: ${formatCurrency(getCreditCardAvailableCredit(form.fundingSourceCardId))}.`
+                : 'Choose which credit card funded this movement.'
+          }}
+        </span>
+      </div>
+
       <div class="form-group">
         <label class="form-label" for="expense-remarks">Remarks</label>
         <textarea
@@ -134,7 +156,7 @@
         ></textarea>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block">Save movement</button>
+      <button type="submit" class="btn btn-primary btn-block">Save transaction</button>
     </form>
   </section>
 </template>
@@ -148,11 +170,13 @@ import {
   saveExpenseCategories
 } from '../lib/expenseCategories'
 import { formatCurrency } from '../lib/formatters'
-import type { Expense } from '../types'
+import type { CreditCard, Expense } from '../types'
 
 const props = defineProps<{
   savingsBanks?: string[]
   savingsBankBalances?: Record<string, number>
+  creditCards?: CreditCard[]
+  creditCardLimits?: Record<string, { limitAmount: number; outstandingBalance: number; availableCredit: number }>
   availableIncome?: number
 }>()
 
@@ -166,6 +190,7 @@ const form = ref({
   amount: 0,
   fundingSource: 'income' as Expense['fundingSource'],
   fundingSourceBank: '',
+  fundingSourceCardId: '',
   targetSavingsBank: '',
   remarks: ''
 })
@@ -180,6 +205,7 @@ const resetForm = () => {
     amount: 0,
     fundingSource: 'income',
     fundingSourceBank: '',
+    fundingSourceCardId: '',
     targetSavingsBank: '',
     remarks: ''
   }
@@ -191,6 +217,13 @@ onMounted(() => {
 
 const categories = computed(() => [...EXPENSE_CATEGORIES, ...customCategories.value])
 const availableSavingsBanks = computed(() => (props.savingsBanks ?? []).filter(Boolean))
+const availableCreditCards = computed(() =>
+  (props.creditCards ?? []).map(card => ({
+    ...card,
+    outstandingBalance: props.creditCardLimits?.[card.id]?.outstandingBalance ?? 0,
+    availableCredit: props.creditCardLimits?.[card.id]?.availableCredit ?? card.limitAmount
+  }))
+)
 const availableIncomeBalance = computed(() => props.availableIncome ?? 0)
 
 const categoryHelpText = computed(() => {
@@ -202,6 +235,8 @@ const categoryHelpText = computed(() => {
 })
 
 const getSavingsBankBalance = (bank: string) => props.savingsBankBalances?.[bank] ?? 0
+const getCreditCardOutstandingBalance = (cardId: string) => props.creditCardLimits?.[cardId]?.outstandingBalance ?? 0
+const getCreditCardAvailableCredit = (cardId: string) => props.creditCardLimits?.[cardId]?.availableCredit ?? 0
 
 const handleAddCategory = () => {
   const normalizedValue = normalizeCategoryName(newCategory.value)
@@ -239,16 +274,24 @@ const syncFundingSourceBank = () => {
 
   if (form.value.fundingSource !== 'savings') {
     form.value.fundingSourceBank = ''
-    return
-  }
-
-  if (availableSavingsBanks.value.length === 0) {
+  } else if (availableSavingsBanks.value.length === 0) {
     form.value.fundingSourceBank = ''
+  } else if (!availableSavingsBanks.value.includes(form.value.fundingSourceBank)) {
+    form.value.fundingSourceBank = availableSavingsBanks.value[0]
+  }
+
+  if (form.value.fundingSource !== 'credit_card') {
+    form.value.fundingSourceCardId = ''
     return
   }
 
-  if (!availableSavingsBanks.value.includes(form.value.fundingSourceBank)) {
-    form.value.fundingSourceBank = availableSavingsBanks.value[0]
+  if (availableCreditCards.value.length === 0) {
+    form.value.fundingSourceCardId = ''
+    return
+  }
+
+  if (!availableCreditCards.value.some(card => card.id === form.value.fundingSourceCardId)) {
+    form.value.fundingSourceCardId = availableCreditCards.value[0].id
   }
 }
 
@@ -292,6 +335,14 @@ watch(
   { immediate: true }
 )
 
+watch(
+  availableCreditCards,
+  () => {
+    syncFundingSourceBank()
+  },
+  { immediate: true }
+)
+
 const submitForm = () => {
   if (!form.value.date || !form.value.category || !form.value.amount) {
     alert('Please fill in all required fields.')
@@ -303,7 +354,7 @@ const submitForm = () => {
     return
   }
 
-  if (form.value.fundingSource !== 'savings' && form.value.amount > availableIncomeBalance.value) {
+  if (form.value.fundingSource === 'income' && form.value.amount > availableIncomeBalance.value) {
     alert(`This movement is larger than your available income balance of ${formatCurrency(availableIncomeBalance.value)}.`)
     return
   }
@@ -319,6 +370,22 @@ const submitForm = () => {
     return
   }
 
+  if (form.value.fundingSource === 'credit_card' && !form.value.fundingSourceCardId) {
+    alert('Please select which credit card funded this expense.')
+    return
+  }
+
+  if (
+    form.value.fundingSource === 'credit_card' &&
+    form.value.fundingSourceCardId &&
+    form.value.amount > getCreditCardAvailableCredit(form.value.fundingSourceCardId)
+  ) {
+    alert(
+      `This movement is larger than the available credit on the selected card (${formatCurrency(getCreditCardAvailableCredit(form.value.fundingSourceCardId))}).`
+    )
+    return
+  }
+
   if (form.value.category === 'Savings' && !form.value.targetSavingsBank) {
     alert('Please select which savings bank should receive this transfer.')
     return
@@ -330,6 +397,7 @@ const submitForm = () => {
     amount: form.value.amount,
     fundingSource: form.value.fundingSource,
     fundingSourceBank: form.value.fundingSource === 'savings' ? form.value.fundingSourceBank : undefined,
+    fundingSourceCardId: form.value.fundingSource === 'credit_card' ? form.value.fundingSourceCardId : undefined,
     targetSavingsBank: form.value.category === 'Savings' ? form.value.targetSavingsBank : undefined,
     remarks: form.value.remarks
   })
