@@ -17,8 +17,8 @@
     </div>
 
     <div v-else class="balance-visual-grid">
-      <div class="chart-frame">
-        <apexchart type="donut" :options="chartOptions" :series="chartSeries" height="310"></apexchart>
+      <div class="chart-frame balance-visual-chart">
+        <apexchart type="donut" :options="chartOptions" :series="chartSeries" height="280"></apexchart>
       </div>
 
       <div class="bank-list">
@@ -29,7 +29,7 @@
             </div>
             <div>
               <div class="bank-name">{{ item.name }}</div>
-              <div class="bank-copy">{{ item.entries }} {{ entryLabel(item.entries) }}</div>
+              <div class="bank-copy">{{ item.entries }} {{ entryLabel(item.entries) }} · {{ itemPercent(item) }}</div>
             </div>
           </div>
           <strong :class="toneClass">{{ formatCurrency(item.total) }}</strong>
@@ -95,8 +95,9 @@ const chartOptions = computed(() => ({
   stroke: { width: 0 },
   plotOptions: {
     pie: {
+      customScale: 0.9,
       donut: {
-        size: '64%',
+        size: '68%',
         labels: {
           show: true,
           name: { show: true },
@@ -123,4 +124,8 @@ const chartOptions = computed(() => ({
 
 const initials = (value: string) => value.split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() ?? '').join('')
 const entryLabel = (count: number) => count === 1 ? props.singularLabel : props.pluralLabel
+const itemPercent = (item: BreakdownItem) => {
+  if (!total.value) return '0%'
+  return `${Math.round((item.total / total.value) * 100)}% of total`
+}
 </script>

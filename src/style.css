@@ -792,6 +792,13 @@ a {
   align-items: center;
 }
 
+.balance-visual-chart {
+  display: grid;
+  place-items: center;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
 .bank-item {
   display: flex;
   align-items: center;

@@ -101,8 +101,8 @@
         </div>
 
         <div v-else class="balance-visual-grid">
-          <div class="chart-frame">
-            <apexchart type="donut" :options="topBalancesChartOptions" :series="topBalancesChartSeries" height="310"></apexchart>
+          <div class="chart-frame balance-visual-chart">
+            <apexchart type="donut" :options="topBalancesChartOptions" :series="topBalancesChartSeries" height="280"></apexchart>
           </div>
 
           <div class="bank-list">
@@ -111,7 +111,7 @@
                 <div class="bank-mark" :style="{ background: `${topBalanceColors[index]}22`, color: topBalanceColors[index] }">{{ initials(account.name) }}</div>
                 <div>
                   <div class="bank-name">{{ account.name }}</div>
-                  <div class="bank-copy">{{ account.accountType.replace(/_/g, ' ') }}</div>
+                  <div class="bank-copy">{{ account.accountType.replace(/_/g, ' ') }} · {{ topBalancePercent(account) }}</div>
                 </div>
               </div>
               <strong :class="account.accountGroup === 'liability' ? 'amount-negative' : 'amount-positive'">{{ formatCurrency(displayBalance(account)) }}</strong>
@@ -239,6 +239,12 @@ const accountName = (accountId: string) => props.accounts.find(account => accoun
 const displayBalance = (account: Account) => getDisplayBalance(account, props.accountBalances[account.id] ?? 0)
 const initials = (value: string) => value.split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() ?? '').join('')
 const topBalancesChartSeries = computed(() => topBalanceAccounts.value.map(account => displayBalance(account)))
+const totalTrackedBalance = computed(() => topBalancesChartSeries.value.reduce((sum, value) => sum + value, 0))
+const topBalancePercent = (account: Account) => {
+  const total = totalTrackedBalance.value
+  if (!total) return '0%'
+  return `${Math.round((displayBalance(account) / total) * 100)}% of tracked`
+}
 const topBalancesChartOptions = computed(() => ({
   chart: {
     type: 'donut',
@@ -260,8 +266,9 @@ const topBalancesChartOptions = computed(() => ({
   },
   plotOptions: {
     pie: {
+      customScale: 0.9,
       donut: {
-        size: '64%',
+        size: '68%',
         labels: {
           show: true,
           name: { show: true },
@@ -271,8 +278,8 @@ const topBalancesChartOptions = computed(() => ({
           },
           total: {
             show: true,
-            label: 'Tracked',
-            formatter: () => formatCurrency(topBalancesChartSeries.value.reduce((sum, value) => sum + value, 0))
+            label: 'Top assets',
+            formatter: () => formatCurrency(totalTrackedBalance.value)
           }
         }
       }
