@@ -1,3 +1,4 @@
+[![CI](https://github.com/nate77143/expense-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/nate77143/expense-tracker/actions/workflows/ci.yml)
 # expense-tracker
 
 Personal finance tracker. Vue 3 + TypeScript + Vite, Supabase (Postgres) for
